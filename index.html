@@ -1,0 +1,4101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐍 Python-Powered Markdown to OneNote Converter</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+    <style>
+        :root {
+            /* Modern Color Palette */
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --success-gradient: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            
+            /* Semantic Colors */
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --info-color: #17a2b8;
+            --dark-color: #343a40;
+            --light-color: #f8f9fa;
+            --muted-color: #6c757d;
+            
+            /* Typography */
+            --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            --font-mono: 'Consolas', 'Monaco', 'Courier New', monospace;
+            
+            /* Layout */
+            --border-radius: 12px;
+            --border-radius-sm: 6px;
+            --border-radius-lg: 16px;
+            --box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            --box-shadow-hover: 0 12px 40px rgba(31, 38, 135, 0.5);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-fast: all 0.15s ease;
+            
+            /* Z-index layers */
+            --z-base: 1;
+            --z-dropdown: 1000;
+            --z-modal: 10000;
+            --z-overlay: 10001;
+            --z-toast: 10002;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-primary);
+            background: var(--primary-gradient);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--box-shadow);
+            overflow: hidden;
+            min-height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Styling */
+        .header {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 30px 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 2;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header h1 i {
+            margin-right: 15px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 2;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Toolbar Styling */
+        .toolbar {
+            background: linear-gradient(to right, #f8f9fa, #e9ecef);
+            border-bottom: 3px solid #dee2e6;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .toolbar-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Button System */
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            background: white;
+            color: #495057;
+            border: 2px solid #e9ecef;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: var(--transition);
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: white;
+            border-color: transparent;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border-color: transparent;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545, #fd7e14);
+            color: white;
+            border-color: transparent;
+        }
+
+        .btn-info {
+            background: var(--accent-gradient);
+            color: white;
+            border-color: transparent;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d, #495057);
+            color: white;
+            border-color: transparent;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        /* Mode Selector */
+        .mode-selector {
+            display: flex;
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 4px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .mode-option {
+            padding: 10px 16px;
+            border: none;
+            background: transparent;
+            border-radius: var(--border-radius-sm);
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            color: var(--muted-color);
+        }
+
+        .mode-option.active {
+            background: var(--primary-gradient);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Status Bar */
+        .status-bar {
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            padding: 12px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            color: var(--muted-color);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success-color);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        /* Main Content Layout */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            flex: 1;
+            min-height: 600px;
+        }
+
+        .input-panel, .output-panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .input-panel {
+            border-right: 3px solid #dee2e6;
+        }
+
+        /* Panel Headers */
+        .panel-header {
+            background: linear-gradient(to right, #f8f9fa, #ffffff);
+            padding: 20px 25px;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: #495057;
+            position: sticky;
+            top: 0;
+            z-index: var(--z-base);
+        }
+
+        .panel-header i {
+            margin-right: 10px;
+            color: var(--info-color);
+            font-size: 16px;
+        }
+
+        .panel-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--muted-color);
+        }
+
+        /* Input Textarea */
+        #markdownInput {
+            flex: 1;
+            border: none;
+            padding: 25px;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            background: #fafbfc;
+            color: #333;
+            tab-size: 4;
+        }
+
+        #markdownInput:focus {
+            background: white;
+            box-shadow: inset 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        #markdownInput::placeholder {
+            color: var(--muted-color);
+            font-style: italic;
+        }
+
+        /* Preview Container */
+        .preview-container {
+            flex: 1;
+            padding: 25px;
+            overflow-y: auto;
+            background: white;
+            position: relative;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: var(--z-overlay);
+            transition: var(--transition);
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-content {
+            text-align: center;
+            color: white;
+            max-width: 400px;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: var(--border-radius-lg);
+            backdrop-filter: blur(20px);
+        }
+
+        .loading-content h3 {
+            margin: 20px 0 10px;
+            font-size: 24px;
+        }
+
+        .loading-content p {
+            opacity: 0.8;
+            margin-bottom: 25px;
+        }
+
+        /* Spinner Animation */
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 3px;
+        }
+
+        /* Notification System */
+        .notification {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            padding: 16px 24px;
+            border-radius: var(--border-radius);
+            color: white;
+            font-weight: 500;
+            box-shadow: var(--box-shadow);
+            transform: translateX(400px);
+            transition: var(--transition);
+            z-index: var(--z-toast);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 400px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success { background: var(--success-color); }
+        .notification.error { background: var(--danger-color); }
+        .notification.warning { background: var(--warning-color); color: #333; }
+        .notification.info { background: var(--info-color); }
+
+        /* Configuration Panel */
+        .config-panel {
+            position: fixed;
+            top: 0;
+            right: -450px;
+            width: 450px;
+            height: 100vh;
+            background: white;
+            box-shadow: -5px 0 30px rgba(0,0,0,0.2);
+            transition: var(--transition);
+            z-index: var(--z-modal);
+            padding: 0;
+            overflow-y: auto;
+        }
+
+        .config-panel.open {
+            right: 0;
+        }
+
+        .config-header {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 25px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: var(--z-base);
+        }
+
+        .config-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .config-section {
+            padding: 25px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .config-section:last-child {
+            border-bottom: none;
+        }
+
+        .config-section h3 {
+            margin-bottom: 20px;
+            color: #495057;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .config-section h3 i {
+            color: var(--info-color);
+        }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            transition: var(--transition-fast);
+            background: #fafbfc;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-check {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+        }
+
+        .form-check input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #667eea;
+        }
+
+        .form-check label {
+            margin-bottom: 0;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* File Input */
+        .file-input {
+            display: none;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .main-container {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            body {
+                padding: 0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .input-panel {
+                border-right: none;
+                border-bottom: 3px solid #dee2e6;
+            }
+            
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 15px;
+            }
+            
+            .toolbar-section {
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .config-panel {
+                width: 100%;
+                right: -100%;
+            }
+            
+            body {
+                padding: 0;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header {
+                padding: 20px 20px;
+            }
+            
+            .toolbar {
+                padding: 15px 20px;
+            }
+            
+            .status-bar {
+                padding: 10px 20px;
+                flex-direction: column;
+                gap: 8px;
+                text-align: center;
+            }
+            
+            #markdownInput, .preview-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <header class="header">
+            <h1><i class="bi bi-robot"></i>Python-Powered Markdown to OneNote</h1>
+            <p>Advanced document conversion with intelligent Python processing, comprehensive diagram support, and perfect OneNote optimization</p>
+        </header>
+
+        <div class="toolbar">
+            <div class="toolbar-section">
+                <div class="mode-selector">
+                    <button class="mode-option active" data-mode="onenote">
+                        <i class="bi bi-journal-text"></i> OneNote Mode
+                    </button>
+                    <button class="mode-option" data-mode="html">
+                        <i class="bi bi-code-slash"></i> HTML Mode
+                    </button>
+                </div>
+            </div>
+
+            <div class="toolbar-section">
+                <button id="loadFileBtn" class="btn btn-secondary">
+                    <i class="bi bi-folder-open"></i> Load File
+                </button>
+                <button id="convertBtn" class="btn btn-primary">
+                    <i class="bi bi-arrow-right-circle"></i> Convert
+                </button>
+                <button id="copyBtn" class="btn btn-success" disabled>
+                    <i class="bi bi-clipboard"></i> Copy HTML
+                </button>
+                <button id="downloadBtn" class="btn btn-info" disabled>
+                    <i class="bi bi-download"></i> Download
+                </button>
+                <button id="configBtn" class="btn btn-secondary">
+                    <i class="bi bi-gear"></i> Settings
+                </button>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span id="pythonStatus">Initializing Python environment...</span>
+            </div>
+            <div class="status-info">
+                <span id="wordCount">0 words</span>
+                <span id="processingTime"></span>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="input-panel">
+                <div class="panel-header">
+                    <div>
+                        <i class="bi bi-markdown"></i> Markdown Input
+                    </div>
+                    <div class="panel-controls">
+                        <button class="btn btn-sm" id="clearBtn">
+                            <i class="bi bi-trash"></i> Clear
+                        </button>
+                        <button class="btn btn-sm" id="sampleBtn">
+                            <i class="bi bi-file-text"></i> Sample
+                        </button>
+                    </div>
+                </div>
+                <textarea id="markdownInput" placeholder="Enter your Markdown content here...
+
+# 🚀 Welcome to Python-Powered Conversion
+
+Start typing your **Markdown** content here, and watch it transform into perfectly formatted OneNote-ready HTML!
+
+## ✨ Features:
+- 🐍 **Python-powered processing**
+- 📊 **Advanced diagram support** 
+- 🎨 **OneNote optimization**
+- 🖼️ **Intelligent image handling**
+- ⚡ **Real-time conversion**
+
+Click the **Sample** button above to see a comprehensive example!"></textarea>
+            </div>
+
+            <div class="output-panel">
+                <div class="panel-header">
+                    <div>
+                        <i class="bi bi-eye"></i> Live Preview
+                    </div>
+                    <div class="panel-controls">
+                        <span class="status-badge">Ready</span>
+                    </div>
+                </div>
+                <div class="preview-container" id="preview">
+                    <div style="text-align: center; color: #6c757d; margin-top: 80px; padding: 40px;">
+                        <i class="bi bi-arrow-left" style="font-size: 48px; opacity: 0.5;"></i>
+                        <h3 style="margin: 20px 0 10px; font-weight: 600;">Ready for Conversion</h3>
+                        <p style="opacity: 0.7; max-width: 300px; margin: 0 auto;">Enter markdown content in the left panel and click <strong>Convert</strong> to see the beautifully formatted preview here.</p>
+                        <button class="btn btn-primary" style="margin-top: 20px;" onclick="document.getElementById('sampleBtn').click()">
+                            <i class="bi bi-play-circle"></i> Try Sample Content
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <h3>Processing Document</h3>
+            <p id="loadingMessage">Initializing Python environment...</p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration Panel -->
+    <div class="config-panel" id="configPanel">
+        <div class="config-header">
+            <h2><i class="bi bi-gear"></i> Configuration</h2>
+            <button class="btn btn-sm" id="closeConfigBtn">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div class="config-section">
+            <h3><i class="bi bi-toggles"></i> Conversion Options</h3>
+            <div class="form-group">
+                <div class="form-check">
+                    <input type="checkbox" id="autoConvert" checked>
+                    <label for="autoConvert">Auto-convert on input</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="form-check">
+                    <input type="checkbox" id="processImages" checked>
+                    <label for="processImages">Process and optimize images</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="form-check">
+                    <input type="checkbox" id="renderDiagrams" checked>
+                    <label for="renderDiagrams">Render diagrams and charts</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="form-check">
+                    <input type="checkbox" id="optimizeForOneNote" checked>
+                    <label for="optimizeForOneNote">OneNote optimization</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="config-section">
+            <h3><i class="bi bi-image"></i> Image Settings</h3>
+            <div class="form-group">
+                <label for="maxImageWidth">Maximum Image Width (px)</label>
+                <input type="number" class="form-control" id="maxImageWidth" value="800" min="200" max="1200" step="50">
+            </div>
+            <div class="form-group">
+                <label for="imageFormat">Preferred Image Format</label>
+                <select class="form-control" id="imageFormat">
+                    <option value="auto">Auto-detect</option>
+                    <option value="webp">WebP (modern)</option>
+                    <option value="png">PNG (compatibility)</option>
+                    <option value="jpeg">JPEG (compact)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <div class="form-check">
+                    <input type="checkbox" id="generatePlaceholders" checked>
+                    <label for="generatePlaceholders">Generate placeholders for missing images</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="config-section">
+            <h3><i class="bi bi-diagram-3"></i> Diagram Settings</h3>
+            <div class="form-group">
+                <label for="diagramTheme">Diagram Theme</label>
+                <select class="form-control" id="diagramTheme">
+                    <option value="default">Default</option>
+                    <option value="dark">Dark</option>
+                    <option value="forest">Forest</option>
+                    <option value="neutral">Neutral</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="diagramScale">Diagram Scale</label>
+                <input type="range" class="form-control" id="diagramScale" min="0.5" max="2" step="0.1" value="1">
+                <small>Current: <span id="diagramScaleValue">1.0</span>x</small>
+            </div>
+            <div class="form-group">
+                <div class="form-check">
+                    <input type="checkbox" id="embedDiagrams" checked>
+                    <label for="embedDiagrams">Embed diagrams as images</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="config-section">
+            <h3><i class="bi bi-speedometer2"></i> Performance</h3>
+            <div class="form-group">
+                <div class="form-check">
+                    <input type="checkbox" id="enableCache" checked>
+                    <label for="enableCache">Enable intelligent caching</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="form-check">
+                    <input type="checkbox" id="asyncProcessing" checked>
+                    <label for="asyncProcessing">Asynchronous processing</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="form-check">
+                    <input type="checkbox" id="showDebugInfo">
+                    <label for="showDebugInfo">Show debug information</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="fileInput" accept=".md,.txt,.markdown" class="file-input">
+        <!-- Python Core Engine Script Block -->
+    <script type="text/python">
+        import asyncio
+        import re
+        import json
+        import base64
+        import time
+        from datetime import datetime
+        from typing import Dict, List, Optional, Tuple, Any
+        from dataclasses import dataclass, asdict
+        from urllib.parse import urlparse, urljoin
+        import html
+
+        # ============================================================================
+        # CONFIGURATION SYSTEM
+        # ============================================================================
+
+        @dataclass
+        class ConversionConfig:
+            """Comprehensive configuration for markdown conversion"""
+            # Conversion modes
+            auto_convert: bool = True
+            onenote_mode: bool = True
+            process_images: bool = True
+            render_diagrams: bool = True
+            optimize_for_onenote: bool = True
+            
+            # Image settings
+            max_image_width: int = 800
+            image_format: str = "auto"  # auto, webp, png, jpeg
+            generate_placeholders: bool = True
+            embed_images: bool = True
+            
+            # Diagram settings
+            diagram_theme: str = "default"  # default, dark, forest, neutral
+            diagram_scale: float = 1.0
+            embed_diagrams: bool = True
+            diagram_format: str = "png"  # png, svg
+            
+            # Performance settings
+            enable_cache: bool = True
+            async_processing: bool = True
+            show_debug_info: bool = False
+            
+            # OneNote optimization
+            use_inline_styles: bool = True
+            optimize_tables: bool = True
+            enhance_code_blocks: bool = True
+            add_metadata: bool = True
+            
+            def to_dict(self) -> Dict[str, Any]:
+                return asdict(self)
+            
+            @classmethod
+            def from_dict(cls, data: Dict[str, Any]) -> 'ConversionConfig':
+                return cls(**data)
+
+        # ============================================================================
+        # CACHE SYSTEM
+        # ============================================================================
+
+        class LRUCache:
+            """Simple LRU Cache implementation for browser environment"""
+            def __init__(self, maxsize: int = 100):
+                self.maxsize = maxsize
+                self.cache = {}
+                self.access_order = []
+            
+            def get(self, key: str) -> Optional[Any]:
+                if key in self.cache:
+                    # Move to end (most recently used)
+                    self.access_order.remove(key)
+                    self.access_order.append(key)
+                    return self.cache[key]
+                return None
+            
+            def put(self, key: str, value: Any) -> None:
+                if key in self.cache:
+                    # Update existing
+                    self.access_order.remove(key)
+                else:
+                    # Add new
+                    if len(self.cache) >= self.maxsize:
+                        # Remove least recently used
+                        oldest = self.access_order.pop(0)
+                        del self.cache[oldest]
+                
+                self.cache[key] = value
+                self.access_order.append(key)
+            
+            def clear(self) -> None:
+                self.cache.clear()
+                self.access_order.clear()
+
+        class CacheManager:
+            """Manages different types of caches for the application"""
+            def __init__(self):
+                self.markdown_cache = LRUCache(maxsize=50)
+                self.image_cache = LRUCache(maxsize=100)
+                self.diagram_cache = LRUCache(maxsize=30)
+                self.html_cache = LRUCache(maxsize=20)
+            
+            def get_cached_result(self, cache_type: str, key: str) -> Optional[Any]:
+                cache = getattr(self, f"{cache_type}_cache", None)
+                if cache:
+                    return cache.get(key)
+                return None
+            
+            def cache_result(self, cache_type: str, key: str, value: Any) -> None:
+                cache = getattr(self, f"{cache_type}_cache", None)
+                if cache:
+                    cache.put(key, value)
+            
+            def clear_all(self) -> None:
+                self.markdown_cache.clear()
+                self.image_cache.clear()
+                self.diagram_cache.clear()
+                self.html_cache.clear()
+
+        # ============================================================================
+        # MARKDOWN PROCESSOR
+        # ============================================================================
+
+        class MarkdownProcessor:
+            """Advanced markdown processing with OneNote optimization"""
+            
+            def __init__(self, config: ConversionConfig):
+                self.config = config
+                self.cache_manager = CacheManager()
+                self._init_patterns()
+            
+            def _init_patterns(self):
+                """Initialize regex patterns for markdown processing"""
+                self.patterns = {
+                    # Headers
+                    'header': re.compile(r'^(#{1,6})\s+(.+)$', re.MULTILINE),
+                    
+                    # Emphasis
+                    'bold': re.compile(r'\*\*(.*?)\*\*'),
+                    'italic': re.compile(r'\*(.*?)\*'),
+                    'strikethrough': re.compile(r'~~(.*?)~~'),
+                    'code_inline': re.compile(r'`([^`]+)`'),
+                    
+                    # Links and images
+                    'image': re.compile(r'!\[([^\]]*)\]\(([^)]+)\)'),
+                    'link': re.compile(r'\[([^\]]+)\]\(([^)]+)\)'),
+                    
+                    # Lists
+                    'unordered_list': re.compile(r'^[\s]*[-*+]\s+(.+)$', re.MULTILINE),
+                    'ordered_list': re.compile(r'^[\s]*\d+\.\s+(.+)$', re.MULTILINE),
+                    
+                    # Code blocks
+                    'code_block': re.compile(r'```(\w+)?\n(.*?)\n```', re.DOTALL),
+                    
+                    # Tables
+                    'table_row': re.compile(r'^\|(.+)\|$', re.MULTILINE),
+                    'table_separator': re.compile(r'^\|[\s]*:?-+:?[\s]*\|', re.MULTILINE),
+                    
+                    # Diagrams
+                    'mermaid': re.compile(r'```mermaid\n(.*?)\n```', re.DOTALL),
+                    'plantuml': re.compile(r'```plantuml\n(.*?)\n```', re.DOTALL),
+                    'python_plot': re.compile(r'```python-plot\n(.*?)\n```', re.DOTALL),
+                    
+                    # Special blocks
+                    'blockquote': re.compile(r'^>\s+(.+)$', re.MULTILINE),
+                    'horizontal_rule': re.compile(r'^[-*_]{3,}$', re.MULTILINE),
+                    
+                    # HTML entities
+                    'html_tags': re.compile(r'<[^>]+>'),
+                }
+            
+            def process_markdown(self, markdown_text: str) -> str:
+                """Main markdown processing pipeline"""
+                if not markdown_text.strip():
+                    return ""
+                
+                # Check cache first
+                cache_key = self._generate_cache_key(markdown_text)
+                cached_result = self.cache_manager.get_cached_result('markdown', cache_key)
+                if cached_result and self.config.enable_cache:
+                    return cached_result
+                
+                try:
+                    # Processing pipeline
+                    html_content = self._process_pipeline(markdown_text)
+                    
+                    # Cache the result
+                    if self.config.enable_cache:
+                        self.cache_manager.cache_result('markdown', cache_key, html_content)
+                    
+                    return html_content
+                    
+                except Exception as e:
+                    error_msg = f"Markdown processing error: {str(e)}"
+                    if self.config.show_debug_info:
+                        print(error_msg)
+                    return self._create_error_html(error_msg)
+            
+            def _process_pipeline(self, markdown_text: str) -> str:
+                """Execute the full processing pipeline"""
+                # 1. Preprocess text
+                text = self._preprocess_text(markdown_text)
+                
+                # 2. Extract and process diagrams
+                text, diagrams = self._extract_diagrams(text)
+                
+                # 3. Convert basic markdown elements
+                html = self._convert_basic_elements(text)
+                
+                # 4. Process images
+                html = self._process_images(html)
+                
+                # 5. Enhance for OneNote
+                if self.config.optimize_for_onenote:
+                    html = self._optimize_for_onenote(html)
+                
+                # 6. Insert processed diagrams
+                html = self._insert_diagrams(html, diagrams)
+                
+                # 7. Apply final formatting
+                html = self._apply_final_formatting(html)
+                
+                return html
+            
+            def _preprocess_text(self, text: str) -> str:
+                """Preprocess the markdown text"""
+                # Normalize line endings
+                text = text.replace('\r\n', '\n').replace('\r', '\n')
+                
+                # Escape HTML entities in plain text
+                text = html.escape(text)
+                
+                # Handle special characters
+                text = text.replace('&amp;', '&')  # Unescape ampersands for markdown processing
+                
+                return text
+            
+            def _convert_basic_elements(self, text: str) -> str:
+                """Convert basic markdown elements to HTML"""
+                html_content = text
+                
+                # Headers (must be processed first)
+                html_content = self._process_headers(html_content)
+                
+                # Code blocks (before inline code)
+                html_content = self._process_code_blocks(html_content)
+                
+                # Lists
+                html_content = self._process_lists(html_content)
+                
+                # Tables
+                html_content = self._process_tables(html_content)
+                
+                # Blockquotes
+                html_content = self._process_blockquotes(html_content)
+                
+                # Horizontal rules
+                html_content = self.patterns['horizontal_rule'].sub(
+                    '<hr style="border: none; height: 2px; background: linear-gradient(to right, #667eea, #764ba2); margin: 20px 0; border-radius: 1px;">', 
+                    html_content
+                )
+                
+                # Emphasis (after blocks to avoid conflicts)
+                html_content = self._process_emphasis(html_content)
+                
+                # Links (after emphasis)
+                html_content = self._process_links(html_content)
+                
+                # Paragraphs (last)
+                html_content = self._process_paragraphs(html_content)
+                
+                return html_content
+            
+            def _process_headers(self, text: str) -> str:
+                """Process markdown headers with OneNote optimization"""
+                def replace_header(match):
+                    level = len(match.group(1))
+                    content = match.group(2).strip()
+                    
+                    # OneNote-optimized header styles
+                    styles = {
+                        1: "font-size: 28px; font-weight: 700; color: #2c3e50; margin: 24px 0 16px 0; padding-bottom: 8px; border-bottom: 3px solid #667eea;",
+                        2: "font-size: 24px; font-weight: 600; color: #34495e; margin: 20px 0 12px 0; padding-bottom: 6px; border-bottom: 2px solid #a8b8ea;",
+                        3: "font-size: 20px; font-weight: 600; color: #4a5568; margin: 16px 0 10px 0;",
+                        4: "font-size: 18px; font-weight: 500; color: #4a5568; margin: 14px 0 8px 0;",
+                        5: "font-size: 16px; font-weight: 500; color: #718096; margin: 12px 0 6px 0;",
+                        6: "font-size: 14px; font-weight: 500; color: #718096; margin: 10px 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px;"
+                    }
+                    
+                    style = styles.get(level, styles[6])
+                    return f'<h{level} style="{style}">{content}</h{level}>'
+                
+                return self.patterns['header'].sub(replace_header, text)
+            
+            def _process_emphasis(self, text: str) -> str:
+                """Process emphasis with OneNote-compatible styles"""
+                # Bold
+                text = self.patterns['bold'].sub(
+                    r'<strong style="font-weight: 700; color: #2d3748;">\1</strong>', 
+                    text
+                )
+                
+                # Italic
+                text = self.patterns['italic'].sub(
+                    r'<em style="font-style: italic; color: #4a5568;">\1</em>', 
+                    text
+                )
+                
+                # Strikethrough
+                text = self.patterns['strikethrough'].sub(
+                    r'<del style="text-decoration: line-through; color: #a0aec0;">\1</del>', 
+                    text
+                )
+                
+                # Inline code
+                text = self.patterns['code_inline'].sub(
+                    r'<code style="background: #f7fafc; color: #e53e3e; padding: 2px 6px; border-radius: 4px; font-family: Consolas, Monaco, monospace; font-size: 0.9em; border: 1px solid #e2e8f0;">\1</code>', 
+                    text
+                )
+                
+                return text
+            
+            def _process_links(self, text: str) -> str:
+                """Process links with OneNote optimization"""
+                def replace_link(match):
+                    link_text = match.group(1)
+                    url = match.group(2)
+                    
+                    # OneNote-friendly link styling
+                    style = "color: #667eea; text-decoration: none; border-bottom: 1px solid #a8b8ea; transition: all 0.2s ease;"
+                    hover_style = "color: #764ba2; border-bottom-color: #764ba2;"
+                    
+                    return f'<a href="{url}" style="{style}" onmouseover="this.style.color=\'#764ba2\'; this.style.borderBottomColor=\'#764ba2\';" onmouseout="this.style.color=\'#667eea\'; this.style.borderBottomColor=\'#a8b8ea\';">{link_text}</a>'
+                
+                return self.patterns['link'].sub(replace_link, text)
+            
+            def _process_code_blocks(self, text: str) -> str:
+                """Process code blocks with syntax highlighting simulation"""
+                def replace_code_block(match):
+                    language = match.group(1) or 'text'
+                    code = match.group(2).strip()
+                    
+                    # OneNote-optimized code block styling
+                    style = """
+                        background: #f8f9fa; 
+                        border: 1px solid #e9ecef; 
+                        border-left: 4px solid #667eea; 
+                        border-radius: 8px; 
+                        padding: 16px 20px; 
+                        font-family: Consolas, Monaco, 'Courier New', monospace; 
+                        font-size: 14px; 
+                        line-height: 1.5; 
+                        overflow-x: auto; 
+                        margin: 16px 0; 
+                        color: #2d3748;
+                        white-space: pre-wrap;
+                        word-wrap: break-word;
+                    """.replace('\n', '').replace('  ', ' ').strip()
+                    
+                    # Add language label if provided
+                    label = ""
+                    if language and language != 'text':
+                        label = f'<div style="font-size: 12px; color: #718096; margin-bottom: 8px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">{language}</div>'
+                    
+                    return f'<div style="margin: 16px 0;">{label}<pre style="{style}"><code>{html.escape(code)}</code></pre></div>'
+                
+                return self.patterns['code_block'].sub(replace_code_block, text)
+            
+            def _process_lists(self, text: str) -> str:
+                """Process both ordered and unordered lists"""
+                lines = text.split('\n')
+                result_lines = []
+                i = 0
+                
+                while i < len(lines):
+                    line = lines[i]
+                    
+                    # Check for list items
+                    if re.match(r'^[\s]*[-*+]\s+', line) or re.match(r'^[\s]*\d+\.\s+', line):
+                        # Process list
+                        list_html, consumed_lines = self._process_list_block(lines[i:])
+                        result_lines.append(list_html)
+                        i += consumed_lines
+                    else:
+                        result_lines.append(line)
+                        i += 1
+                
+                return '\n'.join(result_lines)
+            
+            def _process_list_block(self, lines: List[str]) -> Tuple[str, int]:
+                """Process a block of list items"""
+                if not lines:
+                    return "", 0
+                
+                first_line = lines[0]
+                is_ordered = bool(re.match(r'^[\s]*\d+\.\s+', first_line))
+                tag = 'ol' if is_ordered else 'ul'
+                
+                # List styling
+                list_style = """
+                    margin: 16px 0; 
+                    padding-left: 24px; 
+                    color: #2d3748;
+                """.replace('\n', '').strip()
+                
+                item_style = """
+                    margin: 8px 0; 
+                    line-height: 1.6;
+                """.replace('\n', '').strip()
+                
+                if is_ordered:
+                    list_style += " list-style-type: decimal;"
+                else:
+                    list_style += " list-style-type: disc;"
+                
+                items = []
+                consumed = 0
+                
+                for i, line in enumerate(lines):
+                    if re.match(r'^[\s]*[-*+]\s+', line) or re.match(r'^[\s]*\d+\.\s+', line):
+                        # Extract content
+                        content = re.sub(r'^[\s]*(?:[-*+]|\d+\.)\s+', '', line)
+                        items.append(f'<li style="{item_style}">{content}</li>')
+                        consumed = i + 1
+                    else:
+                        break
+                
+                html = f'<{tag} style="{list_style}">{"".join(items)}</{tag}>'
+                return html, consumed
+            
+            def _process_tables(self, text: str) -> str:
+                """Process markdown tables with OneNote optimization"""
+                lines = text.split('\n')
+                result_lines = []
+                i = 0
+                
+                while i < len(lines):
+                    if self.patterns['table_row'].match(lines[i]):
+                        # Found a table
+                        table_html, consumed_lines = self._process_table_block(lines[i:])
+                        result_lines.append(table_html)
+                        i += consumed_lines
+                    else:
+                        result_lines.append(lines[i])
+                        i += 1
+                
+                return '\n'.join(result_lines)
+            
+            def _process_table_block(self, lines: List[str]) -> Tuple[str, int]:
+                """Process a markdown table block"""
+                if len(lines) < 2:
+                    return lines[0] if lines else "", len(lines)
+                
+                # Table styling for OneNote
+                table_style = """
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    margin: 16px 0; 
+                    font-size: 14px;
+                    background: white;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                """.replace('\n', '').strip()
+                
+                header_style = """
+                    background: linear-gradient(135deg, #667eea, #764ba2); 
+                    color: white; 
+                    font-weight: 600; 
+                    padding: 12px 16px; 
+                    text-align: left; 
+                    border: none;
+                """.replace('\n', '').strip()
+                
+                cell_style = """
+                    padding: 10px 16px; 
+                    border-bottom: 1px solid #e2e8f0; 
+                    color: #2d3748;
+                """.replace('\n', '').strip()
+                
+                # Parse header row
+                header_row = lines[0]
+                headers = [cell.strip() for cell in header_row.split('|')[1:-1]]
+                
+                # Check for separator row
+                separator_idx = 1
+                if len(lines) > 1 and self.patterns['table_separator'].match(lines[1]):
+                    separator_idx = 2
+                
+                # Build table HTML
+                html = f'<table style="{table_style}">'
+                
+                # Header
+                if headers:
+                    html += '<thead><tr>'
+                    for header in headers:
+                        html += f'<th style="{header_style}">{header}</th>'
+                    html += '</tr></thead>'
+                
+                # Body
+                html += '<tbody>'
+                consumed = separator_idx
+                
+                for i in range(separator_idx, len(lines)):
+                    line = lines[i]
+                    if self.patterns['table_row'].match(line):
+                        cells = [cell.strip() for cell in line.split('|')[1:-1]]
+                        html += '<tr>'
+                        for cell in cells:
+                            html += f'<td style="{cell_style}">{cell}</td>'
+                        html += '</tr>'
+                        consumed = i + 1
+                    else:
+                        break
+                
+                html += '</tbody></table>'
+                
+                return html, consumed
+            
+            def _process_blockquotes(self, text: str) -> str:
+                """Process blockquotes with elegant styling"""
+                def replace_blockquote(match):
+                    content = match.group(1)
+                    style = """
+                        background: linear-gradient(135deg, #f8f9ff, #e8f0ff); 
+                        border-left: 4px solid #667eea; 
+                        border-radius: 0 8px 8px 0; 
+                        padding: 16px 20px; 
+                        margin: 16px 0; 
+                        font-style: italic; 
+                        color: #4a5568; 
+                        position: relative;
+                        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+                    """.replace('\n', '').strip()
+                    
+                    return f'<blockquote style="{style}"><p style="margin: 0; line-height: 1.6;">{content}</p></blockquote>'
+                
+                return self.patterns['blockquote'].sub(replace_blockquote, text)
+            
+            def _process_paragraphs(self, text: str) -> str:
+                """Process paragraphs with proper spacing"""
+                lines = text.split('\n')
+                result_lines = []
+                
+                for line in lines:
+                    line = line.strip()
+                    if line and not line.startswith('<'):
+                        # Regular paragraph
+                        style = "margin: 12px 0; line-height: 1.6; color: #2d3748;"
+                        result_lines.append(f'<p style="{style}">{line}</p>')
+                    else:
+                        result_lines.append(line)
+                
+                return '\n'.join(result_lines)
+            
+            def _generate_cache_key(self, content: str) -> str:
+                """Generate a cache key for content"""
+                import hashlib
+                content_hash = hashlib.md5(content.encode()).hexdigest()
+                config_hash = hashlib.md5(str(self.config.to_dict()).encode()).hexdigest()
+                return f"{content_hash}_{config_hash}"
+            
+            def _create_error_html(self, error_message: str) -> str:
+                """Create error HTML with styling"""
+                style = """
+                    background: linear-gradient(135deg, #fed7d7, #feb2b2); 
+                    border: 2px solid #fc8181; 
+                    border-radius: 8px; 
+                    padding: 16px 20px; 
+                    margin: 16px 0; 
+                    color: #742a2a; 
+                    font-weight: 500;
+                """.replace('\n', '').strip()
+                
+                return f'<div style="{style}"><strong>⚠️ Conversion Error:</strong> {html.escape(error_message)}</div>'
+
+        # Global instances
+        global_config = ConversionConfig()
+        markdown_processor = MarkdownProcessor(global_config)
+
+        # Export functions for JavaScript integration
+        def process_markdown_content(markdown_text: str, config_dict: Dict[str, Any] = None) -> str:
+            """Main entry point for markdown processing"""
+            global global_config, markdown_processor
+            
+            if config_dict:
+                global_config = ConversionConfig.from_dict(config_dict)
+                markdown_processor = MarkdownProcessor(global_config)
+            
+            return markdown_processor.process_markdown(markdown_text)
+
+        def update_configuration(config_dict: Dict[str, Any]) -> None:
+            """Update the global configuration"""
+            global global_config, markdown_processor
+            global_config = ConversionConfig.from_dict(config_dict)
+            markdown_processor = MarkdownProcessor(global_config)
+
+        def clear_caches() -> None:
+            """Clear all caches"""
+            global markdown_processor
+            markdown_processor.cache_manager.clear_all()
+
+        def get_word_count(text: str) -> int:
+            """Get word count from markdown text"""
+            # Remove markdown syntax for accurate count
+            clean_text = re.sub(r'[#*`_~\[\]()]+', '', text)
+            clean_text = re.sub(r'https?://\S+', '', clean_text)
+            words = clean_text.split()
+            return len([word for word in words if word.strip()])
+
+        # Make functions available globally
+        js.process_markdown_content = process_markdown_content
+        js.update_configuration = update_configuration
+        js.clear_caches = clear_caches
+        js.get_word_count = get_word_count
+
+        print("✅ Python Core Engine initialized successfully!")
+    </script>
+        <script type="text/python">
+        # ============================================================================
+        # DIAGRAM PROCESSING SYSTEM
+        # ============================================================================
+
+        import matplotlib
+        matplotlib.use('Agg')  # Use non-interactive backend for web
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import io
+        import base64
+        from urllib.parse import quote, unquote
+        import json
+
+        class DiagramRenderer:
+            """Base class for diagram renderers"""
+            def __init__(self, config: ConversionConfig):
+                self.config = config
+                self.cache = LRUCache(maxsize=30)
+            
+            def render(self, diagram_code: str, diagram_type: str) -> str:
+                """Render diagram and return HTML"""
+                cache_key = f"{diagram_type}_{hash(diagram_code)}_{self.config.diagram_theme}_{self.config.diagram_scale}"
+                
+                if self.config.enable_cache:
+                    cached = self.cache.get(cache_key)
+                    if cached:
+                        return cached
+                
+                try:
+                    html = self._render_diagram(diagram_code, diagram_type)
+                    if self.config.enable_cache:
+                        self.cache.put(cache_key, html)
+                    return html
+                except Exception as e:
+                    return self._create_diagram_error(str(e), diagram_code, diagram_type)
+            
+            def _render_diagram(self, code: str, diagram_type: str) -> str:
+                """Override in subclasses"""
+                raise NotImplementedError
+            
+            def _create_diagram_error(self, error: str, code: str, diagram_type: str) -> str:
+                """Create error display for failed diagrams"""
+                error_style = """
+                    background: linear-gradient(135deg, #fed7d7, #feb2b2); 
+                    border: 2px solid #fc8181; 
+                    border-radius: 8px; 
+                    padding: 16px 20px; 
+                    margin: 16px 0; 
+                    color: #742a2a; 
+                    font-family: monospace;
+                """.replace('\n', '').strip()
+                
+                code_style = """
+                    background: #f7fafc; 
+                    border: 1px solid #e2e8f0; 
+                    border-radius: 4px; 
+                    padding: 12px; 
+                    margin-top: 12px; 
+                    font-size: 12px; 
+                    color: #4a5568; 
+                    white-space: pre-wrap;
+                """.replace('\n', '').strip()
+                
+                return f'''
+                <div style="{error_style}">
+                    <strong>🚫 {diagram_type.title()} Diagram Error:</strong><br>
+                    {html.escape(error)}
+                    <details style="margin-top: 8px;">
+                        <summary style="cursor: pointer; font-weight: 500;">Show diagram code</summary>
+                        <div style="{code_style}">{html.escape(code)}</div>
+                    </details>
+                </div>
+                '''
+
+        class PythonPlotRenderer(DiagramRenderer):
+            """Renderer for Python matplotlib plots"""
+            
+            def _render_diagram(self, code: str, diagram_type: str) -> str:
+                """Render Python plot using matplotlib"""
+                try:
+                    # Create figure with theme-appropriate styling
+                    plt.style.use('default')
+                    fig, ax = plt.subplots(figsize=(10 * self.config.diagram_scale, 6 * self.config.diagram_scale))
+                    
+                    # Apply theme
+                    self._apply_theme(fig, ax)
+                    
+                    # Execute the plotting code
+                    local_vars = {'plt': plt, 'ax': ax, 'np': np, 'fig': fig}
+                    exec(code, {'__builtins__': {}}, local_vars)
+                    
+                    # Convert to base64 image
+                    img_buffer = io.BytesIO()
+                    plt.savefig(img_buffer, format='png', dpi=150, bbox_inches='tight', 
+                               facecolor='white', edgecolor='none')
+                    img_buffer.seek(0)
+                    img_b64 = base64.b64encode(img_buffer.read()).decode()
+                    plt.close(fig)
+                    
+                    return self._create_diagram_html(img_b64, 'python-plot', code)
+                    
+                except Exception as e:
+                    plt.close('all')  # Clean up any open figures
+                    raise e
+            
+            def _apply_theme(self, fig, ax):
+                """Apply theme styling to matplotlib figure"""
+                themes = {
+                    'default': {
+                        'bg_color': 'white',
+                        'text_color': '#2d3748',
+                        'grid_color': '#e2e8f0',
+                        'accent_color': '#667eea'
+                    },
+                    'dark': {
+                        'bg_color': '#2d3748',
+                        'text_color': 'white',
+                        'grid_color': '#4a5568',
+                        'accent_color': '#a8b8ea'
+                    },
+                    'forest': {
+                        'bg_color': '#f0fff4',
+                        'text_color': '#22543d',
+                        'grid_color': '#c6f6d5',
+                        'accent_color': '#38a169'
+                    },
+                    'neutral': {
+                        'bg_color': '#f7fafc',
+                        'text_color': '#4a5568',
+                        'grid_color': '#e2e8f0',
+                        'accent_color': '#718096'
+                    }
+                }
+                
+                theme = themes.get(self.config.diagram_theme, themes['default'])
+                
+                fig.patch.set_facecolor(theme['bg_color'])
+                ax.set_facecolor(theme['bg_color'])
+                ax.tick_params(colors=theme['text_color'])
+                ax.grid(True, color=theme['grid_color'], alpha=0.7)
+                
+                for spine in ax.spines.values():
+                    spine.set_color(theme['grid_color'])
+
+        class MermaidRenderer(DiagramRenderer):
+            """Renderer for Mermaid diagrams (fallback to text representation)"""
+            
+            def _render_diagram(self, code: str, diagram_type: str) -> str:
+                """Render Mermaid diagram as styled text block"""
+                # Since we can't render actual Mermaid in pure Python, create a styled code block
+                # In a real implementation, this would call a Mermaid service
+                
+                mermaid_style = """
+                    background: linear-gradient(135deg, #e6f3ff, #cce7ff); 
+                    border: 2px solid #4299e1; 
+                    border-left: 6px solid #3182ce; 
+                    border-radius: 8px; 
+                    padding: 20px; 
+                    margin: 16px 0; 
+                    font-family: monospace; 
+                    color: #2a4365; 
+                    position: relative;
+                    box-shadow: 0 4px 12px rgba(66, 153, 225, 0.15);
+                """.replace('\n', '').strip()
+                
+                header_style = """
+                    background: #3182ce; 
+                    color: white; 
+                    padding: 8px 12px; 
+                    border-radius: 4px; 
+                    font-size: 12px; 
+                    font-weight: bold; 
+                    margin-bottom: 12px; 
+                    display: inline-block;
+                """.replace('\n', '').strip()
+                
+                return f'''
+                <div style="{mermaid_style}">
+                    <div style="{header_style}">📊 MERMAID DIAGRAM</div>
+                    <pre style="margin: 0; white-space: pre-wrap; line-height: 1.4;">{html.escape(code)}</pre>
+                    <div style="margin-top: 12px; font-size: 11px; color: #4a5568; font-style: italic;">
+                        💡 Tip: This Mermaid diagram will render properly when pasted into OneNote or other Mermaid-compatible viewers.
+                    </div>
+                </div>
+                '''
+
+        class PlantUMLRenderer(DiagramRenderer):
+            """Renderer for PlantUML diagrams (fallback to text representation)"""
+            
+            def _render_diagram(self, code: str, diagram_type: str) -> str:
+                """Render PlantUML diagram as styled text block"""
+                
+                plantuml_style = """
+                    background: linear-gradient(135deg, #fff5e6, #ffe6cc); 
+                    border: 2px solid #ed8936; 
+                    border-left: 6px solid #dd6b20; 
+                    border-radius: 8px; 
+                    padding: 20px; 
+                    margin: 16px 0; 
+                    font-family: monospace; 
+                    color: #744210; 
+                    position: relative;
+                    box-shadow: 0 4px 12px rgba(237, 137, 54, 0.15);
+                """.replace('\n', '').strip()
+                
+                header_style = """
+                    background: #dd6b20; 
+                    color: white; 
+                    padding: 8px 12px; 
+                    border-radius: 4px; 
+                    font-size: 12px; 
+                    font-weight: bold; 
+                    margin-bottom: 12px; 
+                    display: inline-block;
+                """.replace('\n', '').strip()
+                
+                return f'''
+                <div style="{plantuml_style}">
+                    <div style="{header_style}">🏗️ PLANTUML DIAGRAM</div>
+                    <pre style="margin: 0; white-space: pre-wrap; line-height: 1.4;">{html.escape(code)}</pre>
+                    <div style="margin-top: 12px; font-size: 11px; color: #4a5568; font-style: italic;">
+                        💡 Tip: This PlantUML diagram will render properly when pasted into OneNote or other PlantUML-compatible viewers.
+                    </div>
+                </div>
+                '''
+
+        class CustomDiagramRenderer(DiagramRenderer):
+            """Renderer for custom diagram types using matplotlib"""
+            
+            def _render_diagram(self, code: str, diagram_type: str) -> str:
+                """Render custom diagrams based on type"""
+                if 'flowchart' in code.lower() or 'flow' in diagram_type:
+                    return self._render_flowchart(code)
+                elif 'pie' in code.lower() or 'chart' in code.lower():
+                    return self._render_chart(code)
+                elif 'graph' in code.lower() or 'network' in code.lower():
+                    return self._render_network(code)
+                else:
+                    return self._render_generic_diagram(code)
+            
+            def _render_flowchart(self, code: str) -> str:
+                """Render a simple flowchart"""
+                try:
+                    fig, ax = plt.subplots(figsize=(10 * self.config.diagram_scale, 6 * self.config.diagram_scale))
+                    
+                    # Simple flowchart example
+                    boxes = ['Start', 'Process', 'Decision', 'End']
+                    positions = [(2, 4), (2, 3), (2, 2), (2, 1)]
+                    
+                    for i, (box, pos) in enumerate(zip(boxes, positions)):
+                        if 'decision' in box.lower():
+                            # Diamond shape for decision
+                            ax.scatter(pos[0], pos[1], s=2000, marker='D', c='#f093fb', alpha=0.8)
+                        else:
+                            # Rectangle for process
+                            ax.scatter(pos[0], pos[1], s=2000, marker='s', c='#667eea', alpha=0.8)
+                        
+                        ax.text(pos[0], pos[1], box, ha='center', va='center', 
+                               fontweight='bold', color='white', fontsize=10)
+                        
+                        # Draw arrows
+                        if i < len(positions) - 1:
+                            ax.arrow(pos[0], pos[1]-0.2, 0, -0.6, head_width=0.1, 
+                                   head_length=0.1, fc='#4a5568', ec='#4a5568')
+                    
+                    ax.set_xlim(0, 4)
+                    ax.set_ylim(0, 5)
+                    ax.set_aspect('equal')
+                    ax.axis('off')
+                    ax.set_title('Flowchart Diagram', fontsize=14, fontweight='bold', color='#2d3748')
+                    
+                    img_buffer = io.BytesIO()
+                    plt.savefig(img_buffer, format='png', dpi=150, bbox_inches='tight',
+                               facecolor='white', edgecolor='none')
+                    img_buffer.seek(0)
+                    img_b64 = base64.b64encode(img_buffer.read()).decode()
+                    plt.close(fig)
+                    
+                    return self._create_diagram_html(img_b64, 'flowchart', code)
+                    
+                except Exception as e:
+                    plt.close('all')
+                    raise e
+            
+            def _render_chart(self, code: str) -> str:
+                """Render a sample chart"""
+                try:
+                    fig, ax = plt.subplots(figsize=(8 * self.config.diagram_scale, 6 * self.config.diagram_scale))
+                    
+                    # Sample data
+                    labels = ['Category A', 'Category B', 'Category C', 'Category D']
+                    sizes = [30, 25, 25, 20]
+                    colors = ['#667eea', '#f093fb', '#4facfe', '#a8edea']
+                    
+                    wedges, texts, autotexts = ax.pie(sizes, labels=labels, colors=colors, 
+                                                     autopct='%1.1f%%', startangle=90)
+                    
+                    for autotext in autotexts:
+                        autotext.set_color('white')
+                        autotext.set_fontweight('bold')
+                    
+                    ax.set_title('Sample Chart', fontsize=14, fontweight='bold', color='#2d3748')
+                    
+                    img_buffer = io.BytesIO()
+                    plt.savefig(img_buffer, format='png', dpi=150, bbox_inches='tight',
+                               facecolor='white', edgecolor='none')
+                    img_buffer.seek(0)
+                    img_b64 = base64.b64encode(img_buffer.read()).decode()
+                    plt.close(fig)
+                    
+                    return self._create_diagram_html(img_b64, 'chart', code)
+                    
+                except Exception as e:
+                    plt.close('all')
+                    raise e
+            
+            def _render_network(self, code: str) -> str:
+                """Render a simple network diagram"""
+                try:
+                    fig, ax = plt.subplots(figsize=(10 * self.config.diagram_scale, 8 * self.config.diagram_scale))
+                    
+                    # Simple network nodes
+                    nodes = [(2, 4), (1, 2), (3, 2), (2, 1), (0, 2), (4, 2)]
+                    node_labels = ['Central', 'Node A', 'Node B', 'Node C', 'Node D', 'Node E']
+                    
+                    # Draw connections
+                    connections = [(0, 1), (0, 2), (0, 3), (1, 4), (2, 5)]
+                    for start, end in connections:
+                        x_vals = [nodes[start][0], nodes[end][0]]
+                        y_vals = [nodes[start][1], nodes[end][1]]
+                        ax.plot(x_vals, y_vals, 'k-', alpha=0.6, linewidth=2)
+                    
+                    # Draw nodes
+                    for i, (pos, label) in enumerate(zip(nodes, node_labels)):
+                        color = '#667eea' if i == 0 else '#4facfe'
+                        size = 1500 if i == 0 else 1000
+                        ax.scatter(pos[0], pos[1], s=size, c=color, alpha=0.8)
+                        ax.text(pos[0], pos[1], label, ha='center', va='center', 
+                               fontweight='bold', color='white', fontsize=9)
+                    
+                    ax.set_xlim(-0.5, 4.5)
+                    ax.set_ylim(0.5, 4.5)
+                    ax.set_aspect('equal')
+                    ax.axis('off')
+                    ax.set_title('Network Diagram', fontsize=14, fontweight='bold', color='#2d3748')
+                    
+                    img_buffer = io.BytesIO()
+                    plt.savefig(img_buffer, format='png', dpi=150, bbox_inches='tight',
+                               facecolor='white', edgecolor='none')
+                    img_buffer.seek(0)
+                    img_b64 = base64.b64encode(img_buffer.read()).decode()
+                    plt.close(fig)
+                    
+                    return self._create_diagram_html(img_b64, 'network', code)
+                    
+                except Exception as e:
+                    plt.close('all')
+                    raise e
+            
+            def _render_generic_diagram(self, code: str) -> str:
+                """Render generic diagram placeholder"""
+                try:
+                    fig, ax = plt.subplots(figsize=(8 * self.config.diagram_scale, 6 * self.config.diagram_scale))
+                    
+                    # Create a simple placeholder
+                    ax.text(0.5, 0.5, '📊\nCustom Diagram\nPlaceholder', 
+                           ha='center', va='center', transform=ax.transAxes,
+                           fontsize=16, fontweight='bold', color='#667eea')
+                    
+                    ax.add_patch(plt.Rectangle((0.1, 0.1), 0.8, 0.8, 
+                                             fill=False, edgecolor='#667eea', linewidth=3,
+                                             transform=ax.transAxes))
+                    
+                    ax.axis('off')
+                    
+                    img_buffer = io.BytesIO()
+                    plt.savefig(img_buffer, format='png', dpi=150, bbox_inches='tight',
+                               facecolor='white', edgecolor='none')
+                    img_buffer.seek(0)
+                    img_b64 = base64.b64encode(img_buffer.read()).decode()
+                    plt.close(fig)
+                    
+                    return self._create_diagram_html(img_b64, 'custom', code)
+                    
+                except Exception as e:
+                    plt.close('all')
+                    raise e
+            
+            def _create_diagram_html(self, img_b64: str, diagram_type: str, original_code: str) -> str:
+                """Create HTML for diagram with image"""
+                container_style = """
+                    margin: 20px 0; 
+                    text-align: center; 
+                    background: linear-gradient(135deg, #f8f9ff, #e8f0ff); 
+                    border-radius: 12px; 
+                    padding: 20px; 
+                    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.1);
+                """.replace('\n', '').strip()
+                
+                img_style = """
+                    max-width: 100%; 
+                    height: auto; 
+                    border-radius: 8px; 
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                """.replace('\n', '').strip()
+                
+                caption_style = """
+                    margin-top: 12px; 
+                    font-size: 12px; 
+                    color: #667eea; 
+                    font-weight: 500; 
+                    text-transform: uppercase; 
+                    letter-spacing: 0.5px;
+                """.replace('\n', '').strip()
+                
+                return f'''
+                <div style="{container_style}">
+                    <img src="data:image/png;base64,{img_b64}" style="{img_style}" alt="{diagram_type} diagram" />
+                    <div style="{caption_style}">{diagram_type.replace('-', ' ').title()} Diagram</div>
+                </div>
+                '''
+
+        # ============================================================================
+        # IMAGE PROCESSING SYSTEM
+        # ============================================================================
+
+        class ImageProcessor:
+            """Advanced image processing with multiple fallback strategies"""
+            
+            def __init__(self, config: ConversionConfig):
+                self.config = config
+                self.cache = LRUCache(maxsize=100)
+                self.processed_images = {}
+            
+            async def process_images(self, html_content: str) -> str:
+                """Process all images in HTML content"""
+                if not self.config.process_images:
+                    return html_content
+                
+                # Find all image references
+                image_pattern = re.compile(r'!\[([^\]]*)\]\(([^)]+)\)')
+                images = image_pattern.findall(html_content)
+                
+                processed_html = html_content
+                
+                for alt_text, url in images:
+                    try:
+                        processed_img = await self._process_single_image(url, alt_text)
+                        original_md = f'![{alt_text}]({url})'
+                        processed_html = processed_html.replace(original_md, processed_img)
+                    except Exception as e:
+                        if self.config.show_debug_info:
+                            print(f"Image processing error for {url}: {e}")
+                        # Keep original if processing fails
+                        continue
+                
+                return processed_html
+            
+            async def _process_single_image(self, url: str, alt_text: str) -> str:
+                """Process a single image with fallback strategies"""
+                cache_key = f"img_{hash(url)}_{self.config.max_image_width}"
+                
+                if self.config.enable_cache:
+                    cached = self.cache.get(cache_key)
+                    if cached:
+                        return cached
+                
+                # Strategy 1: Direct embedding (for data URLs)
+                if url.startswith('data:'):
+                    result = self._create_image_html(url, alt_text, 'data-url')
+                    if self.config.enable_cache:
+                        self.cache.put(cache_key, result)
+                    return result
+                
+                # Strategy 2: URL validation and optimization
+                if self._is_valid_url(url):
+                    result = self._create_optimized_image_html(url, alt_text)
+                    if self.config.enable_cache:
+                        self.cache.put(cache_key, result)
+                    return result
+                
+                # Strategy 3: Generate placeholder
+                if self.config.generate_placeholders:
+                    result = self._create_image_placeholder(alt_text, url)
+                    if self.config.enable_cache:
+                        self.cache.put(cache_key, result)
+                    return result
+                
+                # Fallback: Return as broken image indicator
+                return self._create_broken_image_indicator(alt_text, url)
+            
+            def _is_valid_url(self, url: str) -> bool:
+                """Validate if URL looks like a proper image URL"""
+                try:
+                    parsed = urlparse(url)
+                    if parsed.scheme in ['http', 'https']:
+                        return True
+                    return False
+                except:
+                    return False
+            
+            def _create_image_html(self, src: str, alt_text: str, image_type: str) -> str:
+                """Create optimized image HTML"""
+                container_style = """
+                    margin: 16px 0; 
+                    text-align: center; 
+                    background: linear-gradient(135deg, #f7fafc, #edf2f7); 
+                    border-radius: 12px; 
+                    padding: 16px; 
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                """.replace('\n', '').strip()
+                
+                img_style = f"""
+                    max-width: {self.config.max_image_width}px; 
+                    width: 100%; 
+                    height: auto; 
+                    border-radius: 8px; 
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.1); 
+                    transition: transform 0.3s ease;
+                """.replace('\n', '').strip()
+                
+                caption_style = """
+                    margin-top: 12px; 
+                    font-size: 14px; 
+                    color: #4a5568; 
+                    font-style: italic; 
+                    line-height: 1.4;
+                """.replace('\n', '').strip()
+                
+                return f'''
+                <div style="{container_style}">
+                    <img src="{src}" alt="{html.escape(alt_text)}" style="{img_style}" 
+                         onmouseover="this.style.transform='scale(1.02)'" 
+                         onmouseout="this.style.transform='scale(1)'"/>
+                    {f'<div style="{caption_style}">{html.escape(alt_text)}</div>' if alt_text else ''}
+                </div>
+                '''
+            
+            def _create_optimized_image_html(self, url: str, alt_text: str) -> str:
+                """Create HTML for external images with optimization"""
+                return self._create_image_html(url, alt_text, 'external')
+            
+            def _create_image_placeholder(self, alt_text: str, url: str) -> str:
+                """Create a placeholder for missing images"""
+                placeholder_style = """
+                    background: linear-gradient(135deg, #e2e8f0, #cbd5e0); 
+                    border: 2px dashed #a0aec0; 
+                    border-radius: 12px; 
+                    padding: 40px 20px; 
+                    margin: 16px 0; 
+                    text-align: center; 
+                    color: #4a5568; 
+                    min-height: 200px; 
+                    display: flex; 
+                    flex-direction: column; 
+                    justify-content: center; 
+                    align-items: center;
+                """.replace('\n', '').strip()
+                
+                icon_style = """
+                    font-size: 48px; 
+                    margin-bottom: 16px; 
+                    opacity: 0.6;
+                """.replace('\n', '').strip()
+                
+                title_style = """
+                    font-size: 18px; 
+                    font-weight: 600; 
+                    margin-bottom: 8px; 
+                    color: #2d3748;
+                """.replace('\n', '').strip()
+                
+                url_style = """
+                    font-size: 12px; 
+                    color: #718096; 
+                    font-family: monospace; 
+                    background: #f7fafc; 
+                    padding: 4px 8px; 
+                    border-radius: 4px; 
+                    margin-top: 8px; 
+                    word-break: break-all;
+                """.replace('\n', '').strip()
+                
+                return f'''
+                <div style="{placeholder_style}">
+                    <div style="{icon_style}">🖼️</div>
+                    <div style="{title_style}">Image Placeholder</div>
+                    <div style="color: #718096; margin-bottom: 8px;">{html.escape(alt_text) if alt_text else 'No description provided'}</div>
+                    <div style="{url_style}">{html.escape(url)}</div>
+                    <div style="font-size: 11px; color: #a0aec0; margin-top: 12px; font-style: italic;">
+                        💡 This image will load when the document is viewed in an environment with internet access
+                    </div>
+                </div>
+                '''
+            
+            def _create_broken_image_indicator(self, alt_text: str, url: str) -> str:
+                """Create indicator for broken images"""
+                error_style = """
+                    background: linear-gradient(135deg, #fed7d7, #feb2b2); 
+                    border: 2px solid #fc8181; 
+                    border-radius: 8px; 
+                    padding: 16px; 
+                    margin: 16px 0; 
+                    color: #742a2a; 
+                    text-align: center;
+                """.replace('\n', '').strip()
+                
+                return f'''
+                <div style="{error_style}">
+                    <strong>🚫 Image Error:</strong><br>
+                    Could not load: {html.escape(alt_text) if alt_text else 'Unknown image'}<br>
+                    <small style="font-family: monospace; font-size: 11px;">{html.escape(url)}</small>
+                </div>
+                '''
+
+        # ============================================================================
+        # DIAGRAM PROCESSING INTEGRATION
+        # ============================================================================
+
+        class DiagramProcessor:
+            """Main diagram processing orchestrator"""
+            
+            def __init__(self, config: ConversionConfig):
+                self.config = config
+                self.renderers = {
+                    'python-plot': PythonPlotRenderer(config),
+                    'mermaid': MermaidRenderer(config),
+                    'plantuml': PlantUMLRenderer(config),
+                    'flowchart': CustomDiagramRenderer(config),
+                    'chart': CustomDiagramRenderer(config),
+                    'network': CustomDiagramRenderer(config),
+                    'custom': CustomDiagramRenderer(config)
+                }
+                self.image_processor = ImageProcessor(config)
+            
+            def process_diagrams_and_images(self, markdown_text: str) -> Tuple[str, Dict[str, str]]:
+                """Extract and process all diagrams, return modified text and diagram HTML"""
+                if not self.config.render_diagrams:
+                    return markdown_text, {}
+                
+                diagrams = {}
+                processed_text = markdown_text
+                
+                # Process each diagram type
+                for diagram_type, renderer in self.renderers.items():
+                    pattern_name = diagram_type.replace('-', '_')
+                    if hasattr(markdown_processor.patterns, pattern_name):
+                        pattern = getattr(markdown_processor.patterns, pattern_name)
+                        matches = pattern.findall(processed_text)
+                        
+                        for i, match in enumerate(matches):
+                            diagram_code = match if isinstance(match, str) else match[0]
+                            placeholder = f"__DIAGRAM_{diagram_type}_{i}__"
+                            
+                            try:
+                                diagram_html = renderer.render(diagram_code, diagram_type)
+                                diagrams[placeholder] = diagram_html
+                                
+                                # Replace in text
+                                if diagram_type == 'python-plot':
+                                    pattern_str = f"```python-plot\n{re.escape(diagram_code)}\n```"
+                                elif diagram_type == 'mermaid':
+                                    pattern_str = f"```mermaid\n{re.escape(diagram_code)}\n```"
+                                elif diagram_type == 'plantuml':
+                                    pattern_str = f"```plantuml\n{re.escape(diagram_code)}\n```"
+                                else:
+                                    pattern_str = f"```{diagram_type}\n{re.escape(diagram_code)}\n```"
+                                
+                                processed_text = processed_text.replace(pattern_str, placeholder, 1)
+                                
+                            except Exception as e:
+                                if self.config.show_debug_info:
+                                    print(f"Diagram rendering error: {e}")
+                                continue
+                
+                return processed_text, diagrams
+            
+            async def process_all_images(self, html_content: str) -> str:
+                """Process all images in HTML content"""
+                return await self.image_processor.process_images(html_content)
+
+        # Update the main markdown processor to include diagram processing
+        class EnhancedMarkdownProcessor(MarkdownProcessor):
+            """Enhanced processor with diagram and image support"""
+            
+            def __init__(self, config: ConversionConfig):
+                super().__init__(config)
+                self.diagram_processor = DiagramProcessor(config)
+            
+            def _extract_diagrams(self, text: str) -> Tuple[str, Dict[str, str]]:
+                """Extract and process diagrams"""
+                return self.diagram_processor.process_diagrams_and_images(text)
+            
+            def _insert_diagrams(self, html: str, diagrams: Dict[str, str]) -> str:
+                """Insert processed diagrams back into HTML"""
+                for placeholder, diagram_html in diagrams.items():
+                    html = html.replace(placeholder, diagram_html)
+                return html
+            
+            async def _process_images_async(self, html: str) -> str:
+                """Process images asynchronously"""
+                return await self.diagram_processor.process_all_images(html)
+
+        # Update global instances
+        enhanced_markdown_processor = EnhancedMarkdownProcessor(global_config)
+
+        # Update the main processing function
+        async def process_markdown_content_enhanced(markdown_text: str, config_dict: Dict[str, Any] = None) -> str:
+            """Enhanced markdown processing with diagrams and images"""
+            global global_config, enhanced_markdown_processor
+            
+            if config_dict:
+                global_config = ConversionConfig.from_dict(config_dict)
+                enhanced_markdown_processor = EnhancedMarkdownProcessor(global_config)
+            
+            # Process markdown
+            html_result = enhanced_markdown_processor.process_markdown(markdown_text)
+            
+            # Process images if enabled
+            if global_config.process_images:
+                html_result = await enhanced_markdown_processor._process_images_async(html_result)
+            
+            return html_result
+
+        # Export enhanced functions
+        js.process_markdown_content_enhanced = process_markdown_content_enhanced
+        js.enhanced_markdown_processor = enhanced_markdown_processor
+
+        print("✅ Diagram Processing & Image Handling initialized successfully!")
+    </script>
+    <!-- JavaScript Integration Layer -->
+    <script>
+        // ============================================================================
+        // PYODIDE INITIALIZATION & PYTHON BRIDGE
+        // ============================================================================
+
+        class PythonBridge {
+            constructor() {
+                this.pyodide = null;
+                this.isInitialized = false;
+                this.initializationPromise = null;
+                this.eventListeners = new Map();
+            }
+
+            async initialize() {
+                if (this.initializationPromise) {
+                    return this.initializationPromise;
+                }
+
+                this.initializationPromise = this._initializePyodide();
+                return this.initializationPromise;
+            }
+
+            async _initializePyodide() {
+                try {
+                    this.updateStatus("Loading Python environment...", 10);
+                    
+                    // Load Pyodide
+                    this.pyodide = await loadPyodide();
+                    this.updateStatus("Installing packages...", 30);
+                    
+                    // Install required packages
+                    await this.pyodide.loadPackage(['matplotlib', 'numpy', 'micropip']);
+                    this.updateStatus("Setting up environment...", 60);
+                    
+                    // Install additional packages via micropip if needed
+                    await this.pyodide.runPython(`
+                        import micropip
+                        # Add any additional packages here if needed
+                    `);
+                    
+                    this.updateStatus("Finalizing setup...", 90);
+                    
+                    // Mark as initialized
+                    this.isInitialized = true;
+                    this.updateStatus("Python environment ready", 100);
+                    
+                    // Emit ready event
+                    this.emit('ready');
+                    
+                    return this.pyodide;
+                    
+                } catch (error) {
+                    this.updateStatus(`Initialization failed: ${error.message}`, 0);
+                    throw error;
+                }
+            }
+
+            updateStatus(message, progress = null) {
+                const statusElement = document.getElementById('pythonStatus');
+                const loadingMessage = document.getElementById('loadingMessage');
+                const progressFill = document.getElementById('progressFill');
+                
+                if (statusElement) {
+                    statusElement.textContent = message;
+                }
+                
+                if (loadingMessage) {
+                    loadingMessage.textContent = message;
+                }
+                
+                if (progressFill && progress !== null) {
+                    progressFill.style.width = `${progress}%`;
+                }
+            }
+
+            async callPython(functionName, ...args) {
+                if (!this.isInitialized) {
+                    throw new Error('Python environment not initialized');
+                }
+
+                try {
+                    // Convert arguments to Python-compatible format
+                    const pythonArgs = args.map(arg => {
+                        if (typeof arg === 'object') {
+                            return this.pyodide.toPy(arg);
+                        }
+                        return arg;
+                    });
+
+                    // Call Python function
+                    const result = await this.pyodide.runPython(`
+                        import js
+                        result = ${functionName}(${pythonArgs.map((_, i) => `js.pythonArgs[${i}]`).join(', ')})
+                        result
+                    `);
+
+                    return result;
+                } catch (error) {
+                    console.error(`Python function call failed: ${functionName}`, error);
+                    throw error;
+                }
+            }
+
+            on(event, callback) {
+                if (!this.eventListeners.has(event)) {
+                    this.eventListeners.set(event, []);
+                }
+                this.eventListeners.get(event).push(callback);
+            }
+
+            emit(event, data = null) {
+                if (this.eventListeners.has(event)) {
+                    this.eventListeners.get(event).forEach(callback => callback(data));
+                }
+            }
+        }
+
+        // ============================================================================
+        // APPLICATION STATE MANAGEMENT
+        // ============================================================================
+
+        class AppState {
+            constructor() {
+                this.config = {
+                    auto_convert: true,
+                    onenote_mode: true,
+                    process_images: true,
+                    render_diagrams: true,
+                    optimize_for_onenote: true,
+                    max_image_width: 800,
+                    image_format: "auto",
+                    generate_placeholders: true,
+                    diagram_theme: "default",
+                    diagram_scale: 1.0,
+                    embed_diagrams: true,
+                    enable_cache: true,
+                    async_processing: true,
+                    show_debug_info: false
+                };
+                
+                this.currentContent = '';
+                this.lastProcessedContent = '';
+                this.processingTimeout = null;
+                this.isProcessing = false;
+                
+                this.loadConfigFromStorage();
+            }
+
+            updateConfig(newConfig) {
+                this.config = { ...this.config, ...newConfig };
+                this.saveConfigToStorage();
+                this.emit('configChanged', this.config);
+            }
+
+            saveConfigToStorage() {
+                try {
+                    localStorage.setItem('markdown-converter-config', JSON.stringify(this.config));
+                } catch (error) {
+                    console.warn('Could not save config to localStorage:', error);
+                }
+            }
+
+            loadConfigFromStorage() {
+                try {
+                    const saved = localStorage.getItem('markdown-converter-config');
+                    if (saved) {
+                        this.config = { ...this.config, ...JSON.parse(saved) };
+                    }
+                } catch (error) {
+                    console.warn('Could not load config from localStorage:', error);
+                }
+            }
+
+            setContent(content) {
+                this.currentContent = content;
+                this.emit('contentChanged', content);
+            }
+
+            setProcessing(processing) {
+                this.isProcessing = processing;
+                this.emit('processingChanged', processing);
+            }
+
+            emit(event, data) {
+                window.dispatchEvent(new CustomEvent(`app:${event}`, { detail: data }));
+            }
+        }
+
+        // ============================================================================
+        // UI CONTROLLER
+        // ============================================================================
+
+        class UIController {
+            constructor(pythonBridge, appState) {
+                this.pythonBridge = pythonBridge;
+                this.appState = appState;
+                this.elements = {};
+                this.lastConversionTime = 0;
+                
+                this.initializeElements();
+                this.bindEvents();
+                this.setupEventListeners();
+            }
+
+            initializeElements() {
+                this.elements = {
+                    // Input elements
+                    markdownInput: document.getElementById('markdownInput'),
+                    preview: document.getElementById('preview'),
+                    
+                    // Buttons
+                    convertBtn: document.getElementById('convertBtn'),
+                    copyBtn: document.getElementById('copyBtn'),
+                    downloadBtn: document.getElementById('downloadBtn'),
+                    loadFileBtn: document.getElementById('loadFileBtn'),
+                    clearBtn: document.getElementById('clearBtn'),
+                    sampleBtn: document.getElementById('sampleBtn'),
+                    configBtn: document.getElementById('configBtn'),
+                    closeConfigBtn: document.getElementById('closeConfigBtn'),
+                    
+                    // Mode selector
+                    modeOptions: document.querySelectorAll('.mode-option'),
+                    
+                    // Configuration panel
+                    configPanel: document.getElementById('configPanel'),
+                    fileInput: document.getElementById('fileInput'),
+                    
+                    // Status elements
+                    pythonStatus: document.getElementById('pythonStatus'),
+                    wordCount: document.getElementById('wordCount'),
+                    processingTime: document.getElementById('processingTime'),
+                    loadingOverlay: document.getElementById('loadingOverlay'),
+                    
+                    // Configuration inputs
+                    autoConvert: document.getElementById('autoConvert'),
+                    processImages: document.getElementById('processImages'),
+                    renderDiagrams: document.getElementById('renderDiagrams'),
+                    optimizeForOneNote: document.getElementById('optimizeForOneNote'),
+                    maxImageWidth: document.getElementById('maxImageWidth'),
+                    imageFormat: document.getElementById('imageFormat'),
+                    generatePlaceholders: document.getElementById('generatePlaceholders'),
+                    diagramTheme: document.getElementById('diagramTheme'),
+                    diagramScale: document.getElementById('diagramScale'),
+                    diagramScaleValue: document.getElementById('diagramScaleValue'),
+                    embedDiagrams: document.getElementById('embedDiagrams'),
+                    enableCache: document.getElementById('enableCache'),
+                    asyncProcessing: document.getElementById('asyncProcessing'),
+                    showDebugInfo: document.getElementById('showDebugInfo')
+                };
+            }
+
+            bindEvents() {
+                // Button events
+                this.elements.convertBtn?.addEventListener('click', () => this.convertMarkdown());
+                this.elements.copyBtn?.addEventListener('click', () => this.copyToClipboard());
+                this.elements.downloadBtn?.addEventListener('click', () => this.downloadHTML());
+                this.elements.loadFileBtn?.addEventListener('click', () => this.elements.fileInput?.click());
+                this.elements.clearBtn?.addEventListener('click', () => this.clearContent());
+                this.elements.sampleBtn?.addEventListener('click', () => this.loadSampleContent());
+                this.elements.configBtn?.addEventListener('click', () => this.toggleConfigPanel());
+                this.elements.closeConfigBtn?.addEventListener('click', () => this.closeConfigPanel());
+
+                // Input events
+                this.elements.markdownInput?.addEventListener('input', (e) => this.handleInputChange(e));
+                this.elements.markdownInput?.addEventListener('paste', (e) => this.handlePaste(e));
+                this.elements.fileInput?.addEventListener('change', (e) => this.handleFileLoad(e));
+
+                // Mode selector
+                this.elements.modeOptions?.forEach(option => {
+                    option.addEventListener('click', (e) => this.handleModeChange(e));
+                });
+
+                // Configuration events
+                this.bindConfigurationEvents();
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
+            }
+
+            bindConfigurationEvents() {
+                const configInputs = [
+                    'autoConvert', 'processImages', 'renderDiagrams', 'optimizeForOneNote',
+                    'maxImageWidth', 'imageFormat', 'generatePlaceholders', 'diagramTheme',
+                    'diagramScale', 'embedDiagrams', 'enableCache', 'asyncProcessing', 'showDebugInfo'
+                ];
+
+                configInputs.forEach(inputId => {
+                    const element = this.elements[inputId];
+                    if (element) {
+                        const eventType = element.type === 'checkbox' ? 'change' : 'input';
+                        element.addEventListener(eventType, () => this.updateConfiguration());
+                    }
+                });
+
+                // Special handling for diagram scale
+                if (this.elements.diagramScale) {
+                    this.elements.diagramScale.addEventListener('input', (e) => {
+                        if (this.elements.diagramScaleValue) {
+                            this.elements.diagramScaleValue.textContent = parseFloat(e.target.value).toFixed(1);
+                        }
+                        this.updateConfiguration();
+                    });
+                }
+            }
+
+            setupEventListeners() {
+                // App state events
+                window.addEventListener('app:contentChanged', (e) => this.handleContentChange(e.detail));
+                window.addEventListener('app:configChanged', (e) => this.handleConfigChange(e.detail));
+                window.addEventListener('app:processingChanged', (e) => this.handleProcessingChange(e.detail));
+
+                // Python bridge events
+                this.pythonBridge.on('ready', () => this.handlePythonReady());
+
+                // Window events
+                window.addEventListener('beforeunload', () => this.saveState());
+                window.addEventListener('resize', () => this.handleResize());
+            }
+
+            async handleInputChange(event) {
+                const content = event.target.value;
+                this.appState.setContent(content);
+                this.updateWordCount(content);
+
+                if (this.appState.config.auto_convert) {
+                    this.debounceConversion();
+                }
+            }
+
+            handlePaste(event) {
+                // Handle special paste scenarios
+                setTimeout(() => {
+                    const content = event.target.value;
+                    this.appState.setContent(content);
+                    this.updateWordCount(content);
+                    
+                    if (this.appState.config.auto_convert) {
+                        this.debounceConversion();
+                    }
+                }, 10);
+            }
+
+            debounceConversion() {
+                if (this.appState.processingTimeout) {
+                    clearTimeout(this.appState.processingTimeout);
+                }
+
+                this.appState.processingTimeout = setTimeout(() => {
+                    this.convertMarkdown();
+                }, 500); // 500ms debounce
+            }
+
+            async convertMarkdown() {
+                if (!this.pythonBridge.isInitialized) {
+                    this.showNotification('Python environment not ready', 'warning');
+                    return;
+                }
+
+                const content = this.elements.markdownInput?.value || '';
+                if (!content.trim()) {
+                    this.elements.preview.innerHTML = this.getEmptyStateHTML();
+                    this.updateButtonStates(false);
+                    return;
+                }
+
+                if (this.appState.isProcessing) {
+                    return; // Prevent concurrent processing
+                }
+
+                try {
+                    this.appState.setProcessing(true);
+                    const startTime = performance.now();
+
+                    // Show loading for longer operations
+                    if (content.length > 5000) {
+                        this.showLoadingOverlay(true);
+                    }
+
+                    // Call Python processing function
+                    const html = await this.pythonBridge.callPython(
+                        'process_markdown_content_enhanced',
+                        content,
+                        this.appState.config
+                    );
+
+                    // Update preview
+                    this.elements.preview.innerHTML = html;
+                    this.appState.lastProcessedContent = html;
+
+                    // Update timing
+                    const endTime = performance.now();
+                    this.lastConversionTime = endTime - startTime;
+                    this.updateProcessingTime();
+
+                    // Enable buttons
+                    this.updateButtonStates(true);
+
+                    this.showNotification('Conversion completed successfully', 'success');
+
+                } catch (error) {
+                    console.error('Conversion error:', error);
+                    this.showErrorInPreview(error.message);
+                    this.showNotification(`Conversion failed: ${error.message}`, 'error');
+                } finally {
+                    this.appState.setProcessing(false);
+                    this.showLoadingOverlay(false);
+                }
+            }
+
+            async copyToClipboard() {
+                if (!this.appState.lastProcessedContent) {
+                    this.showNotification('No content to copy', 'warning');
+                    return;
+                }
+
+                try {
+                    await navigator.clipboard.writeText(this.appState.lastProcessedContent);
+                    this.showNotification('HTML copied to clipboard', 'success');
+                } catch (error) {
+                    // Fallback for older browsers
+                    this.fallbackCopyToClipboard(this.appState.lastProcessedContent);
+                }
+            }
+
+            fallbackCopyToClipboard(text) {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+
+                try {
+                    document.execCommand('copy');
+                    this.showNotification('HTML copied to clipboard', 'success');
+                } catch (error) {
+                    this.showNotification('Failed to copy to clipboard', 'error');
+                } finally {
+                    document.body.removeChild(textArea);
+                }
+            }
+
+            downloadHTML() {
+                if (!this.appState.lastProcessedContent) {
+                    this.showNotification('No content to download', 'warning');
+                    return;
+                }
+
+                const blob = new Blob([this.appState.lastProcessedContent], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `converted-markdown-${new Date().toISOString().slice(0, 10)}.html`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                this.showNotification('HTML file downloaded', 'success');
+            }
+
+            handleFileLoad(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                if (!file.name.match(/\.(md|markdown|txt)$/i)) {
+                    this.showNotification('Please select a markdown file (.md, .markdown, or .txt)', 'warning');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const content = e.target.result;
+                    this.elements.markdownInput.value = content;
+                    this.appState.setContent(content);
+                    this.updateWordCount(content);
+                    
+                    if (this.appState.config.auto_convert) {
+                        this.convertMarkdown();
+                    }
+                    
+                    this.showNotification(`Loaded file: ${file.name}`, 'success');
+                };
+                reader.readAsText(file);
+            }
+
+            clearContent() {
+                this.elements.markdownInput.value = '';
+                this.elements.preview.innerHTML = this.getEmptyStateHTML();
+                this.appState.setContent('');
+                this.appState.lastProcessedContent = '';
+                this.updateWordCount('');
+                this.updateButtonStates(false);
+                this.showNotification('Content cleared', 'info');
+            }
+
+            loadSampleContent() {
+                const sampleMarkdown = `# 🚀 Advanced Markdown to OneNote Demo
+
+This document demonstrates the **powerful capabilities** of our Python-powered converter!
+
+## ✨ Text Formatting
+
+Here's how various formatting options look:
+
+- **Bold text** for emphasis
+- *Italic text* for subtle emphasis  
+- ~~Strikethrough~~ for corrections
+- \`inline code\` for technical terms
+- [Links to external resources](https://example.com)
+
+## 📊 Data Visualization
+
+### Python Plot Example
+\`\`\`python-plot
+import numpy as np
+x = np.linspace(0, 2*np.pi, 100)
+y1 = np.sin(x)
+y2 = np.cos(x)
+
+ax.plot(x, y1, label='sin(x)', linewidth=2)
+ax.plot(x, y2, label='cos(x)', linewidth=2)
+ax.set_title('Trigonometric Functions')
+ax.set_xlabel('x')
+ax.set_ylabel('y')
+ax.legend()
+ax.grid(True, alpha=0.3)
+\`\`\`
+
+### Mermaid Diagram
+\`\`\`mermaid
+graph TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Process]
+    B -->|No| D[Skip]
+    C --> E[End]
+    D --> E
+\`\`\`
+
+## 📋 Tables
+
+| Feature | Status | Priority |
+|---------|--------|----------|
+| **Markdown Processing** | ✅ Complete | High |
+| **Diagram Rendering** | ✅ Complete | High |
+| **Image Optimization** | ✅ Complete | Medium |
+| **OneNote Integration** | ✅ Complete | High |
+
+## 💭 Blockquotes
+
+> This is a beautifully styled blockquote that demonstrates how content will appear when pasted into OneNote. The styling is optimized for maximum compatibility and visual appeal.
+
+## 🔢 Code Blocks
+
+\`\`\`javascript
+function convertMarkdown(text) {
+    // This code block shows syntax highlighting
+    return processWithPython(text);
+}
+\`\`\`
+
+## 🎯 Key Benefits
+
+1. **One-click conversion** from Markdown to OneNote-ready HTML
+2. **Advanced diagram support** with multiple rendering engines
+3. **Intelligent image processing** with fallback strategies
+4. **Real-time preview** with live updates
+5. **Comprehensive error handling** for robust operation
+
+---
+
+Ready to paste this into OneNote? Click **Convert** and then **Copy HTML**! 🎉`;
+
+                this.elements.markdownInput.value = sampleMarkdown;
+                this.appState.setContent(sampleMarkdown);
+                this.updateWordCount(sampleMarkdown);
+                
+                if (this.appState.config.auto_convert) {
+                    this.convertMarkdown();
+                }
+                
+                this.showNotification('Sample content loaded', 'success');
+            }
+
+            handleModeChange(event) {
+                const mode = event.target.dataset.mode;
+                
+                // Update UI
+                this.elements.modeOptions.forEach(option => option.classList.remove('active'));
+                event.target.classList.add('active');
+                
+                // Update configuration
+                this.appState.updateConfig({
+                    onenote_mode: mode === 'onenote'
+                });
+                
+                // Reconvert if auto-convert is enabled
+                if (this.appState.config.auto_convert && this.appState.currentContent) {
+                    this.convertMarkdown();
+                }
+            }
+
+            toggleConfigPanel() {
+                this.elements.configPanel.classList.toggle('open');
+                this.updateConfigurationUI();
+            }
+
+            closeConfigPanel() {
+                this.elements.configPanel.classList.remove('open');
+            }
+
+            updateConfiguration() {
+                const newConfig = {
+                    auto_convert: this.elements.autoConvert?.checked ?? true,
+                    process_images: this.elements.processImages?.checked ?? true,
+                    render_diagrams: this.elements.renderDiagrams?.checked ?? true,
+                    optimize_for_onenote: this.elements.optimizeForOneNote?.checked ?? true,
+                    max_image_width: parseInt(this.elements.maxImageWidth?.value) || 800,
+                    image_format: this.elements.imageFormat?.value || 'auto',
+                    generate_placeholders: this.elements.generatePlaceholders?.checked ?? true,
+                    diagram_theme: this.elements.diagramTheme?.value || 'default',
+                    diagram_scale: parseFloat(this.elements.diagramScale?.value) || 1.0,
+                    embed_diagrams: this.elements.embedDiagrams?.checked ?? true,
+                    enable_cache: this.elements.enableCache?.checked ?? true,
+                    async_processing: this.elements.asyncProcessing?.checked ?? true,
+                    show_debug_info: this.elements.showDebugInfo?.checked ?? false
+                };
+
+                this.appState.updateConfig(newConfig);
+
+                // Update Python configuration
+                if (this.pythonBridge.isInitialized) {
+                    this.pythonBridge.callPython('update_configuration', newConfig);
+                }
+            }
+
+            updateConfigurationUI() {
+                const config = this.appState.config;
+                
+                // Update all configuration inputs
+                if (this.elements.autoConvert) this.elements.autoConvert.checked = config.auto_convert;
+                if (this.elements.processImages) this.elements.processImages.checked = config.process_images;
+                if (this.elements.renderDiagrams) this.elements.renderDiagrams.checked = config.render_diagrams;
+                if (this.elements.optimizeForOneNote) this.elements.optimizeForOneNote.checked = config.optimize_for_onenote;
+                if (this.elements.maxImageWidth) this.elements.maxImageWidth.value = config.max_image_width;
+                if (this.elements.imageFormat) this.elements.imageFormat.value = config.image_format;
+                if (this.elements.generatePlaceholders) this.elements.generatePlaceholders.checked = config.generate_placeholders;
+                if (this.elements.diagramTheme) this.elements.diagramTheme.value = config.diagram_theme;
+                if (this.elements.diagramScale) this.elements.diagramScale.value = config.diagram_scale;
+                if (this.elements.diagramScaleValue) this.elements.diagramScaleValue.textContent = config.diagram_scale.toFixed(1);
+                if (this.elements.embedDiagrams) this.elements.embedDiagrams.checked = config.embed_diagrams;
+                if (this.elements.enableCache) this.elements.enableCache.checked = config.enable_cache;
+                if (this.elements.asyncProcessing) this.elements.asyncProcessing.checked = config.async_processing;
+                if (this.elements.showDebugInfo) this.elements.showDebugInfo.checked = config.show_debug_info;
+            }
+
+            handleKeyboardShortcuts(event) {
+                if (event.ctrlKey || event.metaKey) {
+                    switch (event.key) {
+                        case 'Enter':
+                            event.preventDefault();
+                            this.convertMarkdown();
+                            break;
+                        case 's':
+                            event.preventDefault();
+                            this.downloadHTML();
+                            break;
+                        case 'k':
+                            event.preventDefault();
+                            this.clearContent();
+                            break;
+                        case ',':
+                            event.preventDefault();
+                            this.toggleConfigPanel();
+                            break;
+                    }
+                }
+            }
+
+            updateWordCount(content) {
+                if (this.pythonBridge.isInitialized && this.elements.wordCount) {
+                    try {
+                        const count = this.pythonBridge.callPython('get_word_count', content);
+                        this.elements.wordCount.textContent = `${count} words`;
+                    } catch (error) {
+                        const words = content.trim().split(/\s+/).filter(word => word.length > 0);
+                        this.elements.wordCount.textContent = `${words.length} words`;
+                    }
+                } else if (this.elements.wordCount) {
+                    const words = content.trim().split(/\s+/).filter(word => word.length > 0);
+                    this.elements.wordCount.textContent = `${words.length} words`;
+                }
+            }
+
+            updateProcessingTime() {
+                if (this.elements.processingTime && this.lastConversionTime > 0) {
+                    const timeMs = Math.round(this.lastConversionTime);
+                    this.elements.processingTime.textContent = `Processed in ${timeMs}ms`;
+                }
+            }
+
+            updateButtonStates(hasContent) {
+                if (this.elements.copyBtn) {
+                    this.elements.copyBtn.disabled = !hasContent;
+                }
+                if (this.elements.downloadBtn) {
+                    this.elements.downloadBtn.disabled = !hasContent;
+                }
+            }
+
+            showLoadingOverlay(show) {
+                if (this.elements.loadingOverlay) {
+                    if (show) {
+                        this.elements.loadingOverlay.classList.add('active');
+                    } else {
+                        this.elements.loadingOverlay.classList.remove('active');
+                    }
+                }
+            }
+
+            showNotification(message, type = 'info') {
+                // Remove existing notifications
+                const existing = document.querySelector('.notification');
+                if (existing) {
+                    existing.remove();
+                }
+
+                // Create new notification
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                
+                const icons = {
+                    success: '✅',
+                    error: '❌',
+                    warning: '⚠️',
+                    info: 'ℹ️'
+                };
+
+                notification.innerHTML = `
+                    <span>${icons[type] || icons.info}</span>
+                    <span>${message}</span>
+                `;
+
+                document.body.appendChild(notification);
+                
+                // Show notification
+                setTimeout(() => notification.classList.add('show'), 100);
+                
+                // Auto-hide after 4 seconds
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    setTimeout(() => notification.remove(), 300);
+                }, 4000);
+            }
+
+            showErrorInPreview(errorMessage) {
+                const errorHTML = `
+                    <div style="
+                        background: linear-gradient(135deg, #fed7d7, #feb2b2); 
+                        border: 2px solid #fc8181; 
+                        border-radius: 12px; 
+                        padding: 24px; 
+                        margin: 20px; 
+                        text-align: center; 
+                        color: #742a2a;
+                    ">
+                        <h3 style="margin: 0 0 12px 0; font-size: 18px;">⚠️ Conversion Error</h3>
+                        <p style="margin: 0; font-size: 14px;">${errorMessage}</p>
+                        <button onclick="app.ui.convertMarkdown()" style="
+                            margin-top: 16px; 
+                            padding: 8px 16px; 
+                            background: #e53e3e; 
+                            color: white; 
+                            border: none; 
+                            border-radius: 6px; 
+                            cursor: pointer;
+                        ">Try Again</button>
+                    </div>
+                `;
+                this.elements.preview.innerHTML = errorHTML;
+            }
+
+            getEmptyStateHTML() {
+                return `
+                    <div style="text-align: center; color: #6c757d; margin-top: 80px; padding: 40px;">
+                        <i class="bi bi-arrow-left" style="font-size: 48px; opacity: 0.5;"></i>
+                        <h3 style="margin: 20px 0 10px; font-weight: 600;">Ready for Conversion</h3>
+                        <p style="opacity: 0.7; max-width: 300px; margin: 0 auto;">Enter markdown content in the left panel and click <strong>Convert</strong> to see the beautifully formatted preview here.</p>
+                        <button class="btn btn-primary" style="margin-top: 20px;" onclick="app.ui.loadSampleContent()">
+                            <i class="bi bi-play-circle"></i> Try Sample Content
+                        </button>
+                    </div>
+                `;
+            }
+
+            handleContentChange(content) {
+                // Handle content change events
+            }
+
+            handleConfigChange(config) {
+                // Handle configuration change events
+                this.updateConfigurationUI();
+            }
+
+            handleProcessingChange(isProcessing) {
+                // Update UI based on processing state
+                if (this.elements.convertBtn) {
+                    this.elements.convertBtn.disabled = isProcessing;
+                    this.elements.convertBtn.innerHTML = isProcessing 
+                        ? '<i class="bi bi-arrow-clockwise"></i> Converting...'
+                        : '<i class="bi bi-arrow-right-circle"></i> Convert';
+                }
+            }
+
+            handlePythonReady() {
+                this.elements.pythonStatus.textContent = 'Python environment ready ✓';
+                this.showNotification('Python environment initialized successfully', 'success');
+                
+                // Update configuration in Python
+                this.pythonBridge.callPython('update_configuration', this.appState.config);
+                
+                // Enable auto-convert if enabled
+                if (this.appState.config.auto_convert && this.appState.currentContent) {
+                    this.convertMarkdown();
+                }
+            }
+
+            handleResize() {
+                // Handle window resize if needed
+            }
+
+            saveState() {
+                // Save current state before page unload
+                this.appState.saveConfigToStorage();
+            }
+        }
+
+        // ============================================================================
+        // APPLICATION INITIALIZATION
+        // ============================================================================
+
+        class Application {
+            constructor() {
+                this.pythonBridge = new PythonBridge();
+                this.appState = new AppState();
+                this.ui = null;
+            }
+
+            async initialize() {
+                try {
+                    // Show loading overlay
+                    document.getElementById('loadingOverlay').classList.add('active');
+                    
+                    // Initialize Python environment
+                    await this.pythonBridge.initialize();
+                    
+                    // Initialize UI controller
+                    this.ui = new UIController(this.pythonBridge, this.appState);
+                    
+                    // Hide loading overlay
+                    document.getElementById('loadingOverlay').classList.remove('active');
+                    
+                    console.log('✅ Application initialized successfully');
+                    
+                } catch (error) {
+                    console.error('❌ Application initialization failed:', error);
+                    document.getElementById('loadingOverlay').classList.remove('active');
+                    
+                    // Show error notification
+                    const notification = document.createElement('div');
+                    notification.className = 'notification error show';
+                    notification.innerHTML = `
+                        <span>❌</span>
+                        <span>Failed to initialize: ${error.message}</span>
+                    `;
+                    document.body.appendChild(notification);
+                }
+            }
+        }
+
+        // Initialize application when DOM is ready
+        let app;
+        document.addEventListener('DOMContentLoaded', async () => {
+            app = new Application();
+            await app.initialize();
+            
+            // Make app globally available for debugging
+            window.app = app;
+        });
+    </script>
+    <script>
+        // ============================================================================
+        // ADVANCED CONFIGURATION MANAGEMENT
+        // ============================================================================
+
+        class ConfigurationManager {
+            constructor() {
+                this.schemas = this.initializeSchemas();
+                this.validators = this.initializeValidators();
+                this.migrations = this.initializeMigrations();
+                this.watchers = new Map();
+                this.currentVersion = '1.0.0';
+            }
+
+            initializeSchemas() {
+                return {
+                    '1.0.0': {
+                        // Conversion settings
+                        auto_convert: { type: 'boolean', default: true, description: 'Automatically convert markdown on input changes' },
+                        onenote_mode: { type: 'boolean', default: true, description: 'Optimize output for OneNote compatibility' },
+                        process_images: { type: 'boolean', default: true, description: 'Process and optimize images in markdown' },
+                        render_diagrams: { type: 'boolean', default: true, description: 'Render diagrams and charts' },
+                        optimize_for_onenote: { type: 'boolean', default: true, description: 'Apply OneNote-specific optimizations' },
+                        
+                        // Image settings
+                        max_image_width: { type: 'number', default: 800, min: 200, max: 1600, description: 'Maximum width for processed images' },
+                        image_format: { type: 'enum', default: 'auto', options: ['auto', 'webp', 'png', 'jpeg'], description: 'Preferred image format' },
+                        generate_placeholders: { type: 'boolean', default: true, description: 'Generate placeholders for missing images' },
+                        embed_images: { type: 'boolean', default: true, description: 'Embed images as base64 data URLs' },
+                        
+                        // Diagram settings
+                        diagram_theme: { type: 'enum', default: 'default', options: ['default', 'dark', 'forest', 'neutral'], description: 'Theme for rendered diagrams' },
+                        diagram_scale: { type: 'number', default: 1.0, min: 0.5, max: 3.0, step: 0.1, description: 'Scale factor for diagrams' },
+                        embed_diagrams: { type: 'boolean', default: true, description: 'Embed diagrams as images' },
+                        diagram_format: { type: 'enum', default: 'png', options: ['png', 'svg'], description: 'Format for rendered diagrams' },
+                        
+                        // Performance settings
+                        enable_cache: { type: 'boolean', default: true, description: 'Enable intelligent caching for better performance' },
+                        async_processing: { type: 'boolean', default: true, description: 'Use asynchronous processing where possible' },
+                        show_debug_info: { type: 'boolean', default: false, description: 'Display debug information and verbose logging' },
+                        debounce_delay: { type: 'number', default: 500, min: 100, max: 2000, description: 'Delay for auto-conversion debouncing (ms)' },
+                        
+                        // UI settings
+                        theme: { type: 'enum', default: 'auto', options: ['auto', 'light', 'dark'], description: 'Application theme' },
+                        font_size: { type: 'number', default: 14, min: 10, max: 24, description: 'Font size for editor' },
+                        show_line_numbers: { type: 'boolean', default: false, description: 'Show line numbers in editor' },
+                        word_wrap: { type: 'boolean', default: true, description: 'Enable word wrapping in editor' },
+                        
+                        // Export settings
+                        include_metadata: { type: 'boolean', default: true, description: 'Include metadata in exported files' },
+                        export_format: { type: 'enum', default: 'html', options: ['html', 'pdf', 'docx'], description: 'Default export format' },
+                        filename_template: { type: 'string', default: 'markdown-{date}', description: 'Template for exported filenames' }
+                    }
+                };
+            }
+
+            initializeValidators() {
+                return {
+                    boolean: (value, schema) => typeof value === 'boolean',
+                    number: (value, schema) => {
+                        if (typeof value !== 'number' || isNaN(value)) return false;
+                        if (schema.min !== undefined && value < schema.min) return false;
+                        if (schema.max !== undefined && value > schema.max) return false;
+                        return true;
+                    },
+                    string: (value, schema) => {
+                        if (typeof value !== 'string') return false;
+                        if (schema.minLength && value.length < schema.minLength) return false;
+                        if (schema.maxLength && value.length > schema.maxLength) return false;
+                        return true;
+                    },
+                    enum: (value, schema) => schema.options.includes(value)
+                };
+            }
+
+            initializeMigrations() {
+                return {
+                    // Future migrations can be added here
+                    // '1.1.0': (oldConfig) => { /* migration logic */ }
+                };
+            }
+
+            validateConfig(config) {
+                const schema = this.schemas[this.currentVersion];
+                const errors = [];
+                
+                for (const [key, value] of Object.entries(config)) {
+                    const fieldSchema = schema[key];
+                    if (!fieldSchema) {
+                        errors.push(`Unknown configuration field: ${key}`);
+                        continue;
+                    }
+                    
+                    const validator = this.validators[fieldSchema.type];
+                    if (!validator || !validator(value, fieldSchema)) {
+                        errors.push(`Invalid value for ${key}: ${value}`);
+                    }
+                }
+                
+                return { valid: errors.length === 0, errors };
+            }
+
+            getDefaultConfig() {
+                const schema = this.schemas[this.currentVersion];
+                const config = {};
+                
+                for (const [key, fieldSchema] of Object.entries(schema)) {
+                    config[key] = fieldSchema.default;
+                }
+                
+                return config;
+            }
+
+            migrateConfig(config, fromVersion) {
+                let currentConfig = { ...config };
+                const versions = Object.keys(this.migrations).sort();
+                
+                for (const version of versions) {
+                    if (version > fromVersion) {
+                        currentConfig = this.migrations[version](currentConfig);
+                    }
+                }
+                
+                return currentConfig;
+            }
+
+            watch(key, callback) {
+                if (!this.watchers.has(key)) {
+                    this.watchers.set(key, []);
+                }
+                this.watchers.get(key).push(callback);
+            }
+
+            notify(key, oldValue, newValue) {
+                if (this.watchers.has(key)) {
+                    this.watchers.get(key).forEach(callback => {
+                        try {
+                            callback(newValue, oldValue, key);
+                        } catch (error) {
+                            console.error(`Configuration watcher error for ${key}:`, error);
+                        }
+                    });
+                }
+            }
+
+            exportConfig(config) {
+                return {
+                    version: this.currentVersion,
+                    timestamp: new Date().toISOString(),
+                    config: config
+                };
+            }
+
+            importConfig(exportedConfig) {
+                if (!exportedConfig.version || !exportedConfig.config) {
+                    throw new Error('Invalid configuration format');
+                }
+                
+                let config = exportedConfig.config;
+                
+                // Migrate if necessary
+                if (exportedConfig.version !== this.currentVersion) {
+                    config = this.migrateConfig(config, exportedConfig.version);
+                }
+                
+                // Validate
+                const validation = this.validateConfig(config);
+                if (!validation.valid) {
+                    throw new Error(`Configuration validation failed: ${validation.errors.join(', ')}`);
+                }
+                
+                return config;
+            }
+        }
+
+        // ============================================================================
+        // ADVANCED EVENT HANDLING SYSTEM
+        // ============================================================================
+
+        class EventManager {
+            constructor() {
+                this.listeners = new Map();
+                this.middleware = [];
+                this.eventHistory = [];
+                this.maxHistorySize = 100;
+                this.globalErrorHandlers = [];
+            }
+
+            addMiddleware(middleware) {
+                this.middleware.push(middleware);
+            }
+
+            on(event, listener, options = {}) {
+                if (!this.listeners.has(event)) {
+                    this.listeners.set(event, []);
+                }
+                
+                const listenerObj = {
+                    fn: listener,
+                    once: options.once || false,
+                    priority: options.priority || 0,
+                    id: options.id || this.generateId()
+                };
+                
+                this.listeners.get(event).push(listenerObj);
+                
+                // Sort by priority (higher priority first)
+                this.listeners.get(event).sort((a, b) => b.priority - a.priority);
+                
+                return listenerObj.id;
+            }
+
+            once(event, listener, options = {}) {
+                return this.on(event, listener, { ...options, once: true });
+            }
+
+            off(event, listenerId) {
+                if (!this.listeners.has(event)) return false;
+                
+                const listeners = this.listeners.get(event);
+                const index = listeners.findIndex(l => l.id === listenerId);
+                
+                if (index !== -1) {
+                    listeners.splice(index, 1);
+                    return true;
+                }
+                
+                return false;
+            }
+
+            async emit(event, data = null, options = {}) {
+                const eventObj = {
+                    type: event,
+                    data: data,
+                    timestamp: Date.now(),
+                    id: this.generateId(),
+                    cancelled: false,
+                    stopPropagation: false
+                };
+                
+                // Add to history
+                this.addToHistory(eventObj);
+                
+                try {
+                    // Apply middleware
+                    for (const middleware of this.middleware) {
+                        await middleware(eventObj);
+                        if (eventObj.cancelled) return eventObj;
+                    }
+                    
+                    // Execute listeners
+                    if (this.listeners.has(event)) {
+                        const listeners = [...this.listeners.get(event)];
+                        
+                        for (const listener of listeners) {
+                            if (eventObj.stopPropagation) break;
+                            
+                            try {
+                                await listener.fn(eventObj);
+                                
+                                // Remove if once
+                                if (listener.once) {
+                                    this.off(event, listener.id);
+                                }
+                            } catch (error) {
+                                this.handleError(error, event, listener);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    this.handleError(error, event);
+                }
+                
+                return eventObj;
+            }
+
+            addToHistory(eventObj) {
+                this.eventHistory.unshift(eventObj);
+                if (this.eventHistory.length > this.maxHistorySize) {
+                    this.eventHistory.pop();
+                }
+            }
+
+            getEventHistory(filter = null) {
+                if (filter) {
+                    return this.eventHistory.filter(filter);
+                }
+                return [...this.eventHistory];
+            }
+
+            addGlobalErrorHandler(handler) {
+                this.globalErrorHandlers.push(handler);
+            }
+
+            handleError(error, event, listener = null) {
+                const errorEvent = {
+                    error: error,
+                    event: event,
+                    listener: listener,
+                    timestamp: Date.now()
+                };
+                
+                // Call global error handlers
+                this.globalErrorHandlers.forEach(handler => {
+                    try {
+                        handler(errorEvent);
+                    } catch (handlerError) {
+                        console.error('Error in global error handler:', handlerError);
+                    }
+                });
+                
+                // Default error handling
+                console.error(`Event error in ${event}:`, error);
+            }
+
+            generateId() {
+                return `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            }
+
+            clear(event = null) {
+                if (event) {
+                    this.listeners.delete(event);
+                } else {
+                    this.listeners.clear();
+                }
+            }
+
+            getStats() {
+                const stats = {
+                    totalEvents: this.listeners.size,
+                    totalListeners: 0,
+                    eventHistory: this.eventHistory.length,
+                    middleware: this.middleware.length
+                };
+                
+                for (const listeners of this.listeners.values()) {
+                    stats.totalListeners += listeners.length;
+                }
+                
+                return stats;
+            }
+        }
+
+        // ============================================================================
+        // PERFORMANCE MONITOR
+        // ============================================================================
+
+        class PerformanceMonitor {
+            constructor() {
+                this.metrics = new Map();
+                this.observers = [];
+                this.thresholds = {
+                    conversion: 5000, // 5 seconds
+                    rendering: 2000,  // 2 seconds
+                    fileLoad: 3000    // 3 seconds
+                };
+            }
+
+            startTimer(operation) {
+                const id = this.generateId();
+                this.metrics.set(id, {
+                    operation: operation,
+                    startTime: performance.now(),
+                    endTime: null,
+                    duration: null,
+                    memory: this.getMemoryInfo()
+                });
+                return id;
+            }
+
+            endTimer(id) {
+                const metric = this.metrics.get(id);
+                if (!metric) return null;
+                
+                metric.endTime = performance.now();
+                metric.duration = metric.endTime - metric.startTime;
+                metric.memoryAfter = this.getMemoryInfo();
+                
+                // Check thresholds
+                this.checkThresholds(metric);
+                
+                // Notify observers
+                this.notifyObservers(metric);
+                
+                return metric;
+            }
+
+            getMemoryInfo() {
+                if (performance.memory) {
+                    return {
+                        used: performance.memory.usedJSHeapSize,
+                        total: performance.memory.totalJSHeapSize,
+                        limit: performance.memory.jsHeapSizeLimit
+                    };
+                }
+                return null;
+            }
+
+            checkThresholds(metric) {
+                const threshold = this.thresholds[metric.operation];
+                if (threshold && metric.duration > threshold) {
+                    console.warn(`Performance warning: ${metric.operation} took ${metric.duration.toFixed(2)}ms (threshold: ${threshold}ms)`);
+                    
+                    // Emit performance warning event
+                    if (window.app && window.app.eventManager) {
+                        window.app.eventManager.emit('performance:warning', {
+                            operation: metric.operation,
+                            duration: metric.duration,
+                            threshold: threshold
+                        });
+                    }
+                }
+            }
+
+            addObserver(callback) {
+                this.observers.push(callback);
+            }
+
+            notifyObservers(metric) {
+                this.observers.forEach(observer => {
+                    try {
+                        observer(metric);
+                    } catch (error) {
+                        console.error('Performance observer error:', error);
+                    }
+                });
+            }
+
+            getMetrics(operation = null) {
+                const allMetrics = Array.from(this.metrics.values()).filter(m => m.endTime !== null);
+                
+                if (operation) {
+                    return allMetrics.filter(m => m.operation === operation);
+                }
+                
+                return allMetrics;
+            }
+
+            getAverageTime(operation) {
+                const metrics = this.getMetrics(operation);
+                if (metrics.length === 0) return 0;
+                
+                const total = metrics.reduce((sum, m) => sum + m.duration, 0);
+                return total / metrics.length;
+            }
+
+            generateReport() {
+                const operations = [...new Set(Array.from(this.metrics.values()).map(m => m.operation))];
+                const report = {
+                    timestamp: new Date().toISOString(),
+                    operations: {}
+                };
+                
+                operations.forEach(op => {
+                    const metrics = this.getMetrics(op);
+                    if (metrics.length > 0) {
+                        report.operations[op] = {
+                            count: metrics.length,
+                            averageTime: this.getAverageTime(op),
+                            minTime: Math.min(...metrics.map(m => m.duration)),
+                            maxTime: Math.max(...metrics.map(m => m.duration)),
+                            totalTime: metrics.reduce((sum, m) => sum + m.duration, 0)
+                        };
+                    }
+                });
+                
+                return report;
+            }
+
+            clear() {
+                this.metrics.clear();
+            }
+
+            generateId() {
+                return `perf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            }
+        }
+
+        // ============================================================================
+        // ENHANCED UI CONTROLLER EXTENSIONS
+        // ============================================================================
+
+        class EnhancedUIController extends UIController {
+            constructor(pythonBridge, appState) {
+                super(pythonBridge, appState);
+                this.configManager = new ConfigurationManager();
+                this.eventManager = new EventManager();
+                this.performanceMonitor = new PerformanceMonitor();
+                this.shortcuts = new Map();
+                this.contextMenus = new Map();
+                
+                this.initializeEnhancedFeatures();
+            }
+
+            initializeEnhancedFeatures() {
+                this.setupAdvancedEventHandlers();
+                this.setupKeyboardShortcuts();
+                this.setupContextMenus();
+                this.setupPerformanceMonitoring();
+                this.setupConfigurationWatchers();
+                this.setupAutoSave();
+                this.setupAccessibility();
+            }
+
+            setupAdvancedEventHandlers() {
+                // Global error handling
+                this.eventManager.addGlobalErrorHandler((errorEvent) => {
+                    this.showNotification(`Error in ${errorEvent.event}: ${errorEvent.error.message}`, 'error');
+                });
+
+                // Performance monitoring
+                this.eventManager.on('conversion:start', () => {
+                    this.conversionTimerId = this.performanceMonitor.startTimer('conversion');
+                });
+
+                this.eventManager.on('conversion:end', () => {
+                    if (this.conversionTimerId) {
+                        const metric = this.performanceMonitor.endTimer(this.conversionTimerId);
+                        this.updateProcessingTime(metric.duration);
+                    }
+                });
+
+                // Configuration changes
+                this.eventManager.on('config:changed', (event) => {
+                    this.handleAdvancedConfigChange(event.data);
+                });
+
+                // Content changes with analytics
+                this.eventManager.on('content:changed', (event) => {
+                    this.analyzeContent(event.data);
+                });
+            }
+
+            setupKeyboardShortcuts() {
+                const shortcuts = [
+                    { key: 'Ctrl+Enter', action: () => this.convertMarkdown(), description: 'Convert markdown' },
+                    { key: 'Ctrl+S', action: () => this.downloadHTML(), description: 'Save as HTML' },
+                    { key: 'Ctrl+K', action: () => this.clearContent(), description: 'Clear content' },
+                    { key: 'Ctrl+O', action: () => this.elements.fileInput?.click(), description: 'Open file' },
+                    { key: 'Ctrl+,', action: () => this.toggleConfigPanel(), description: 'Open settings' },
+                    { key: 'Ctrl+/', action: () => this.showShortcutsHelp(), description: 'Show shortcuts' },
+                    { key: 'F11', action: () => this.toggleFullscreen(), description: 'Toggle fullscreen' },
+                    { key: 'Ctrl+Z', action: () => this.undo(), description: 'Undo' },
+                    { key: 'Ctrl+Y', action: () => this.redo(), description: 'Redo' }
+                ];
+
+                shortcuts.forEach(shortcut => {
+                    this.shortcuts.set(shortcut.key, shortcut);
+                });
+            }
+
+            setupContextMenus() {
+                // Editor context menu
+                this.elements.markdownInput?.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    this.showContextMenu(e, 'editor');
+                });
+
+                // Preview context menu
+                this.elements.preview?.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    this.showContextMenu(e, 'preview');
+                });
+            }
+
+            setupPerformanceMonitoring() {
+                this.performanceMonitor.addObserver((metric) => {
+                    if (this.appState.config.show_debug_info) {
+                        console.log(`Performance: ${metric.operation} completed in ${metric.duration.toFixed(2)}ms`);
+                    }
+                });
+
+                // Monitor conversion performance
+                this.eventManager.on('performance:warning', (event) => {
+                    this.showNotification(`Performance warning: ${event.data.operation} is taking longer than expected`, 'warning');
+                });
+            }
+
+            setupConfigurationWatchers() {
+                // Watch for theme changes
+                this.configManager.watch('theme', (newValue, oldValue) => {
+                    this.applyTheme(newValue);
+                });
+
+                // Watch for font size changes
+                this.configManager.watch('font_size', (newValue, oldValue) => {
+                    this.applyFontSize(newValue);
+                });
+
+                // Watch for auto-convert changes
+                this.configManager.watch('auto_convert', (newValue, oldValue) => {
+                    if (newValue && this.appState.currentContent) {
+                        this.convertMarkdown();
+                    }
+                });
+            }
+
+            setupAutoSave() {
+                let autoSaveTimer;
+                
+                this.eventManager.on('content:changed', () => {
+                    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+                    
+                    autoSaveTimer = setTimeout(() => {
+                        this.autoSave();
+                    }, 30000); // Auto-save every 30 seconds
+                });
+            }
+
+            setupAccessibility() {
+                // ARIA live regions for screen readers
+                this.createAriaLiveRegion();
+                
+                // Focus management
+                this.setupFocusManagement();
+                
+                // High contrast mode detection
+                if (window.matchMedia('(prefers-contrast: high)').matches) {
+                    document.body.classList.add('high-contrast');
+                }
+                
+                // Reduced motion detection
+                if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                    document.body.classList.add('reduced-motion');
+                }
+            }
+
+            async convertMarkdown() {
+                this.eventManager.emit('conversion:start');
+                
+                try {
+                    await super.convertMarkdown();
+                    this.eventManager.emit('conversion:end');
+                } catch (error) {
+                    this.eventManager.emit('conversion:error', { error });
+                    throw error;
+                }
+            }
+
+            handleAdvancedConfigChange(config) {
+                // Apply immediate UI changes
+                this.applyConfigToUI(config);
+                
+                // Update Python configuration
+                if (this.pythonBridge.isInitialized) {
+                    this.pythonBridge.callPython('update_configuration', config);
+                }
+                
+                // Trigger reconversion if needed
+                if (config.auto_convert && this.appState.currentContent) {
+                    this.debounceConversion();
+                }
+            }
+
+            analyzeContent(content) {
+                const analysis = {
+                    wordCount: content.trim().split(/\s+/).filter(word => word.length > 0).length,
+                    lineCount: content.split('\n').length,
+                    characterCount: content.length,
+                    hasImages: /!\[.*?\]\(.*?\)/.test(content),
+                    hasDiagrams: /```(?:mermaid|plantuml|python-plot)/.test(content),
+                    hasTables: /\|.*\|/.test(content),
+                    hasCodeBlocks: /```/.test(content)
+                };
+                
+                this.eventManager.emit('content:analyzed', analysis);
+                this.updateContentStats(analysis);
+            }
+
+            updateContentStats(analysis) {
+                // Update word count with additional stats
+                if (this.elements.wordCount) {
+                    let stats = `${analysis.wordCount} words`;
+                    if (analysis.hasImages) stats += ' • Images';
+                    if (analysis.hasDiagrams) stats += ' • Diagrams';
+                    if (analysis.hasTables) stats += ' • Tables';
+                    
+                    this.elements.wordCount.textContent = stats;
+                }
+            }
+
+            applyTheme(theme) {
+                document.body.className = document.body.className.replace(/theme-\w+/, '');
+                
+                if (theme === 'auto') {
+                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    theme = prefersDark ? 'dark' : 'light';
+                }
+                
+                document.body.classList.add(`theme-${theme}`);
+            }
+
+            applyFontSize(fontSize) {
+                if (this.elements.markdownInput) {
+                    this.elements.markdownInput.style.fontSize = `${fontSize}px`;
+                }
+            }
+
+            applyConfigToUI(config) {
+                Object.entries(config).forEach(([key, value]) => {
+                    const element = this.elements[this.camelCase(key)];
+                    if (element) {
+                        if (element.type === 'checkbox') {
+                            element.checked = value;
+                        } else {
+                            element.value = value;
+                        }
+                    }
+                });
+            }
+
+            showShortcutsHelp() {
+                const shortcuts = Array.from(this.shortcuts.values());
+                const helpHTML = `
+                    <div style="max-width: 500px; padding: 20px;">
+                        <h3 style="margin-bottom: 16px; color: #2d3748;">⌨️ Keyboard Shortcuts</h3>
+                        <div style="display: grid; gap: 8px;">
+                            ${shortcuts.map(shortcut => `
+                                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+                                    <span style="font-family: monospace; background: #f7fafc; padding: 2px 6px; border-radius: 4px; font-size: 12px;">${shortcut.key}</span>
+                                    <span style="color: #4a5568;">${shortcut.description}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                
+                // Create modal or notification for shortcuts
+                this.showNotification('Press Ctrl+/ to see shortcuts', 'info');
+            }
+
+            showContextMenu(event, type) {
+                const menu = this.createContextMenu(type);
+                menu.style.left = `${event.pageX}px`;
+                menu.style.top = `${event.pageY}px`;
+                document.body.appendChild(menu);
+                
+                // Close on click outside
+                const closeMenu = (e) => {
+                    if (!menu.contains(e.target)) {
+                        menu.remove();
+                        document.removeEventListener('click', closeMenu);
+                    }
+                };
+                
+                setTimeout(() => document.addEventListener('click', closeMenu), 0);
+            }
+
+            createContextMenu(type) {
+                const menu = document.createElement('div');
+                menu.className = 'context-menu';
+                menu.style.cssText = `
+                    position: absolute;
+                    background: white;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+                    padding: 8px 0;
+                    z-index: 10000;
+                    min-width: 180px;
+                `;
+                
+                const items = this.getContextMenuItems(type);
+                items.forEach(item => {
+                    const menuItem = document.createElement('div');
+                    menuItem.style.cssText = `
+                        padding: 8px 16px;
+                        cursor: pointer;
+                        font-size: 14px;
+                        color: #2d3748;
+                        border-bottom: 1px solid #f7fafc;
+                    `;
+                    menuItem.textContent = item.label;
+                    menuItem.addEventListener('click', item.action);
+                    menu.appendChild(menuItem);
+                });
+                
+                return menu;
+            }
+
+            getContextMenuItems(type) {
+                if (type === 'editor') {
+                    return [
+                        { label: '📋 Paste', action: () => this.pasteFromClipboard() },
+                        { label: '📝 Convert', action: () => this.convertMarkdown() },
+                        { label: '🧹 Clear', action: () => this.clearContent() },
+                        { label: '📂 Load Sample', action: () => this.loadSampleContent() }
+                    ];
+                } else if (type === 'preview') {
+                    return [
+                        { label: '📋 Copy HTML', action: () => this.copyToClipboard() },
+                        { label: '💾 Download', action: () => this.downloadHTML() },
+                        { label: '🔄 Refresh', action: () => this.convertMarkdown() }
+                    ];
+                }
+                return [];
+            }
+
+            createAriaLiveRegion() {
+                const liveRegion = document.createElement('div');
+                liveRegion.id = 'aria-live-region';
+                liveRegion.setAttribute('aria-live', 'polite');
+                liveRegion.style.cssText = `
+                    position: absolute;
+                    left: -10000px;
+                    width: 1px;
+                    height: 1px;
+                    overflow: hidden;
+                `;
+                document.body.appendChild(liveRegion);
+            }
+
+            announceToScreenReader(message) {
+                const liveRegion = document.getElementById('aria-live-region');
+                if (liveRegion) {
+                    liveRegion.textContent = message;
+                }
+            }
+
+            setupFocusManagement() {
+                // Focus trap for modal dialogs
+                this.eventManager.on('modal:opened', (event) => {
+                    this.trapFocus(event.data.element);
+                });
+            }
+
+            trapFocus(element) {
+                const focusableElements = element.querySelectorAll(
+                    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+                );
+                
+                const firstElement = focusableElements[0];
+                const lastElement = focusableElements[focusableElements.length - 1];
+                
+                element.addEventListener('keydown', (e) => {
+                    if (e.key === 'Tab') {
+                        if (e.shiftKey) {
+                            if (document.activeElement === firstElement) {
+                                e.preventDefault();
+                                lastElement.focus();
+                            }
+                        } else {
+                            if (document.activeElement === lastElement) {
+                                e.preventDefault();
+                                firstElement.focus();
+                            }
+                        }
+                    }
+                });
+                
+                firstElement?.focus();
+            }
+
+            autoSave() {
+                if (this.appState.currentContent) {
+                    try {
+                        localStorage.setItem('markdown-converter-autosave', JSON.stringify({
+                            content: this.appState.currentContent,
+                            timestamp: Date.now()
+                        }));
+                        
+                        this.announceToScreenReader('Content auto-saved');
+                    } catch (error) {
+                        console.warn('Auto-save failed:', error);
+                    }
+                }
+            }
+
+            loadAutoSave() {
+                try {
+                    const saved = localStorage.getItem('markdown-converter-autosave');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        const age = Date.now() - data.timestamp;
+                        
+                        // Only load if less than 24 hours old
+                        if (age < 24 * 60 * 60 * 1000) {
+                            this.elements.markdownInput.value = data.content;
+                            this.appState.setContent(data.content);
+                            this.showNotification('Auto-saved content restored', 'info');
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Auto-save restore failed:', error);
+                }
+            }
+
+            camelCase(str) {
+                return str.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+            }
+
+            undo() {
+                // Implement undo functionality
+                this.showNotification('Undo not yet implemented', 'info');
+            }
+
+            redo() {
+                // Implement redo functionality
+                this.showNotification('Redo not yet implemented', 'info');
+            }
+
+            toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+
+            async pasteFromClipboard() {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    const textarea = this.elements.markdownInput;
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    const newValue = textarea.value.substring(0, start) + text + textarea.value.substring(end);
+                    
+                    textarea.value = newValue;
+                    textarea.selectionStart = textarea.selectionEnd = start + text.length;
+                    
+                    this.appState.setContent(newValue);
+                    this.updateWordCount(newValue);
+                    
+                    if (this.appState.config.auto_convert) {
+                        this.debounceConversion();
+                    }
+                } catch (error) {
+                    this.showNotification('Could not paste from clipboard', 'warning');
+                }
+            }
+        }
+
+        // Update the Application class to use enhanced UI controller
+        class EnhancedApplication extends Application {
+            async initialize() {
+                try {
+                    // Show loading overlay
+                    document.getElementById('loadingOverlay').classList.add('active');
+                    
+                    // Initialize Python environment
+                    await this.pythonBridge.initialize();
+                    
+                    // Initialize enhanced UI controller
+                    this.ui = new EnhancedUIController(this.pythonBridge, this.appState);
+                    
+                    // Load auto-saved content
+                    this.ui.loadAutoSave();
+                    
+                    // Hide loading overlay
+                    document.getElementById('loadingOverlay').classList.remove('active');
+                    
+                    console.log('✅ Enhanced Application initialized successfully');
+                    
+                } catch (error) {
+                    console.error('❌ Application initialization failed:', error);
+                    document.getElementById('loadingOverlay').classList.remove('active');
+                    
+                    // Show error notification
+                    const notification = document.createElement('div');
+                    notification.className = 'notification error show';
+                    notification.innerHTML = `
+                        <span>❌</span>
+                        <span>Failed to initialize: ${error.message}</span>
+                    `;
+                    document.body.appendChild(notification);
+                }
+            }
+        }
+
+        // Initialize enhanced application when DOM is ready
+        document.addEventListener('DOMContentLoaded', async () => {
+            app = new EnhancedApplication();
+            await app.initialize();
+            
+            // Make app globally available for debugging
+            window.app = app;
+        });
+    </script>
+</body>
+</html>
