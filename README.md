@@ -279,7 +279,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - **GitHub Issues**: [Report bugs or request features](https://github.com/allarddewinter/markdown-to-onenote/issues)
 - **Discussions**: [Ask questions or share ideas](https://github.com/allarddewinter/markdown-to-onenote/discussions)
-- **Email**: [Contact the maintainer](mailto:your-email@example.com)
 
 ---
 
