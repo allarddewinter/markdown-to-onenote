@@ -1073,50 +1073,68 @@
 
             async processMermaidDiagrams(markdown) {
                 const mermaidRegex = /```mermaid\n([\s\S]*?)\n```/g;
-                const diagrams = [];
+                const replacements = [];
                 let match;
 
+                // Collect all matches with their start and end positions
                 while ((match = mermaidRegex.exec(markdown)) !== null) {
-                    diagrams.push({
+                    replacements.push({
                         fullMatch: match[0],
                         diagram: match[1].trim(),
-                        index: this.mermaidCounter++,
-                        type: 'mermaid'
+                        start: match.index,
+                        end: mermaidRegex.lastIndex,
+                        index: this.mermaidCounter++
                     });
                 }
 
-                for (const diagramInfo of diagrams) {
+                // If no diagrams found, return the original markdown.
+                if (replacements.length === 0) return markdown;
+
+                // Render each diagram asynchronously into its HTML replacement.
+                for (const rep of replacements) {
                     try {
+                        let diagramHtml = '';
                         if (this.useImageMode) {
-                            // OneNote mode - convert to PNG with better error handling
-                            const imageDataUrl = await this.renderMermaidDiagram(diagramInfo.diagram, diagramInfo.index);
-                            const diagramHtml = `<div class="diagram-container">
-                                <div class="diagram-title">Mermaid Diagram</div>
-                                <img src="${imageDataUrl}" alt="Mermaid Diagram" style="max-width: 100%; height: auto;"
-                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                <pre style="display: none; padding: 10px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; white-space: pre-wrap;">${this.escapeHtml(diagramInfo.diagram)}</pre>
-                            </div>`;
-                            markdown = markdown.replace(diagramInfo.fullMatch, diagramHtml);
+                            const imageDataUrl = await this.renderMermaidDiagram(rep.diagram, rep.index);
+                            diagramHtml = `<div class="diagram-container">
+    <div class="diagram-title">Mermaid Diagram</div>
+    <img src="${imageDataUrl}" alt="Mermaid Diagram" style="max-width: 100%; height: auto;"
+         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+    <pre style="display: none; padding: 10px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; white-space: pre-wrap;">${this.escapeHtml(rep.diagram)}</pre>
+</div>`;
                         } else {
-                            // HTML mode - keep as SVG
-                            const svgString = await this.renderMermaidDiagramSVG(diagramInfo.diagram, diagramInfo.index);
-                            const diagramHtml = `<div class="diagram-container">
-                                <div class="diagram-title">Mermaid Diagram</div>
-                                ${svgString}
-                            </div>`;
-                            markdown = markdown.replace(diagramInfo.fullMatch, diagramHtml);
+                            const svgString = await this.renderMermaidDiagramSVG(rep.diagram, rep.index);
+                            diagramHtml = `<div class="diagram-container">
+    <div class="diagram-title">Mermaid Diagram</div>
+    ${svgString}
+</div>`;
                         }
+                        rep.replacement = diagramHtml;
                     } catch (error) {
                         console.error('Mermaid rendering error:', error);
-                        const errorHtml = `<div class="diagram-container">
-                            <div class="diagram-title">Mermaid Diagram (Error)</div>
-                            <p style="color: red; border: 1px solid red; padding: 10px; border-radius: 4px; background: #fee;">Error rendering diagram: ${error.message}</p>
-                        </div>`;
-                        markdown = markdown.replace(diagramInfo.fullMatch, errorHtml);
+                        rep.replacement = `<div class="diagram-container">
+    <div class="diagram-title">Mermaid Diagram (Error)</div>
+    <p style="color: red; border: 1px solid red; padding: 10px; border-radius: 4px; background: #fee;">Error rendering diagram: ${error.message}</p>
+</div>`;
                     }
                 }
 
-                return markdown;
+                // Now rebuild the markdown string using the segments. 
+                let newMarkdown = "";
+                let currentIndex = 0;
+
+                for (const rep of replacements) {
+                    // Append text from current index to the match start
+                    newMarkdown += markdown.substring(currentIndex, rep.start);
+                    // Append the replacement HTML
+                    newMarkdown += rep.replacement;
+                    // Update current index to after the match
+                    currentIndex = rep.end;
+                }
+                // Append any text after the last diagram
+                newMarkdown += markdown.substring(currentIndex);
+                
+                return newMarkdown;
             }
 
             async processPlantUMLDiagrams(markdown) {
