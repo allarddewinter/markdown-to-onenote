@@ -1090,48 +1090,56 @@
                 // If no diagrams found, return the original markdown.
                 if (replacements.length === 0) return markdown;
 
-                // Render each diagram asynchronously into its HTML replacement.
+                // Process each diagram asynchronously
                 for (const rep of replacements) {
                     try {
                         let diagramHtml = '';
                         if (this.useImageMode) {
+                            // Render as image (PNG) and enforce display:block on the image to remove extra vertical whitespace.
                             const imageDataUrl = await this.renderMermaidDiagram(rep.diagram, rep.index);
-                            diagramHtml = `<div class="diagram-container">
+                            diagramHtml = `<div class="diagram-container" style="overflow:hidden; margin:0; padding:0;">
     <div class="diagram-title">Mermaid Diagram</div>
-    <img src="${imageDataUrl}" alt="Mermaid Diagram" style="max-width: 100%; height: auto;"
+    <img src="${imageDataUrl}" alt="Mermaid Diagram" style="display:block; max-width: 100%; height: auto;"
          onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
     <pre style="display: none; padding: 10px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; white-space: pre-wrap;">${this.escapeHtml(rep.diagram)}</pre>
 </div>`;
                         } else {
-                            const svgString = await this.renderMermaidDiagramSVG(rep.diagram, rep.index);
-                            diagramHtml = `<div class="diagram-container">
+                            // Render as SVG. Adjust the SVG string to include display:block style.
+                            let svgString = await this.renderMermaidDiagramSVG(rep.diagram, rep.index);
+                            // Adjust SVG to remove extra white space.
+                            svgString = await this.adjustSvgBoundingBox(svgString);
+                            // Add display:block if not already present.
+                            let modifiedSvgString = svgString;
+                            if (!/style\s*=/.test(svgString)) {
+                                modifiedSvgString = svgString.replace('<svg ', '<svg style="display:block;" ');
+                            } else {
+                                modifiedSvgString = svgString.replace(/style="([^"]*)"/, (match, content) =>
+                                    `style="${content}; display:block;"`
+                                );
+                            }
+                            diagramHtml = `<div class="diagram-container" style="overflow:hidden; margin:0; padding:0;">
     <div class="diagram-title">Mermaid Diagram</div>
-    ${svgString}
+    ${modifiedSvgString}
 </div>`;
                         }
                         rep.replacement = diagramHtml;
                     } catch (error) {
                         console.error('Mermaid rendering error:', error);
-                        rep.replacement = `<div class="diagram-container">
+                        rep.replacement = `<div class="diagram-container" style="overflow:hidden; margin:0; padding:0;">
     <div class="diagram-title">Mermaid Diagram (Error)</div>
     <p style="color: red; border: 1px solid red; padding: 10px; border-radius: 4px; background: #fee;">Error rendering diagram: ${error.message}</p>
 </div>`;
                     }
                 }
 
-                // Now rebuild the markdown string using the segments. 
+                // Rebuild the markdown by stitching text segments with their replacements.
                 let newMarkdown = "";
                 let currentIndex = 0;
-
                 for (const rep of replacements) {
-                    // Append text from current index to the match start
                     newMarkdown += markdown.substring(currentIndex, rep.start);
-                    // Append the replacement HTML
                     newMarkdown += rep.replacement;
-                    // Update current index to after the match
                     currentIndex = rep.end;
                 }
-                // Append any text after the last diagram
                 newMarkdown += markdown.substring(currentIndex);
                 
                 return newMarkdown;
@@ -1371,103 +1379,239 @@
                 if (!this.graphviz) {
                     throw new Error('GraphViz library not available');
                 }
-
                 try {
-                    const svg = this.graphviz.dot(diagramCode);
+                    let svg = this.graphviz.dot(diagramCode);
+                    // Adjust the generated SVG (this should help with clipping issues)
+                    svg = await this.adjustSvgBoundingBox(svg);
                     return svg;
                 } catch (error) {
                     throw new Error(`GraphViz rendering failed: ${error.message}`);
                 }
             }
 
-            // Replace the svgToImageDataUrl function with this improved version
-            async svgToImageDataUrl(svgString) {
-                return new Promise((resolve, reject) => {
+            async adjustSvgBoundingBox(svgString) {
+        // This method attaches the SVG off-screen,
+        // computes its bounding box,
+        // and updates the SVG's viewBox, width, and height accordingly.
+        return new Promise((resolve) => {
+            try {
+                // Create an off-screen container
+                const container = document.createElement('div');
+                container.style.position = 'absolute';
+                container.style.left = '-9999px';
+                container.style.top = '-9999px';
+                container.style.visibility = 'hidden';
+                document.body.appendChild(container);
+                container.innerHTML = svgString;
+                const svgElem = container.querySelector('svg');
+                if (!svgElem) {
+                    document.body.removeChild(container);
+                    return resolve(svgString);
+                }
+                
+                // Allow the browser to render before getting bounding box
+                setTimeout(() => {
                     try {
-                        // Create a temporary div to parse SVG dimensions
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = svgString;
-                        const svgElement = tempDiv.querySelector('svg');
-                        
-                        if (!svgElement) {
-                            reject(new Error('Invalid SVG content'));
-                            return;
-                        }
+                        const bbox = svgElem.getBBox();
+                        // Set the viewBox to the bounding box (with a small padding if needed)
+                        const padding = 5;
+                        const newX = bbox.x - padding;
+                        const newY = bbox.y - padding;
+                        const newWidth = bbox.width + 2 * padding;
+                        const newHeight = bbox.height + 2 * padding;
+                        svgElem.setAttribute('viewBox', `${newX} ${newY} ${newWidth} ${newHeight}`);
+                        svgElem.setAttribute('width', newWidth);
+                        svgElem.setAttribute('height', newHeight);
+                        // Serialize back to string
+                        const updatedSvgString = new XMLSerializer().serializeToString(svgElem);
+                        document.body.removeChild(container);
+                        resolve(updatedSvgString);
+                    } catch (err) {
+                        console.error('Error adjusting SVG bounding box:', err);
+                        document.body.removeChild(container);
+                        resolve(svgString);
+                    }
+                }, 0);
+            } catch (error) {
+                console.error('adjustSvgBoundingBox failed:', error);
+                resolve(svgString);
+            }
+        });
+    }
 
-                        // Get SVG dimensions
-                        let width = 800; // default width
-                        let height = 600; // default height
-                        
+    // Updated processMermaidDiagrams method (SVG branch)
+    async processMermaidDiagrams(markdown) {
+        const mermaidRegex = /```mermaid\n([\s\S]*?)\n```/g;
+        const replacements = [];
+        let match;
+
+        // Collect all matches with their start and end positions
+        while ((match = mermaidRegex.exec(markdown)) !== null) {
+            replacements.push({
+                fullMatch: match[0],
+                diagram: match[1].trim(),
+                start: match.index,
+                end: mermaidRegex.lastIndex,
+                index: this.mermaidCounter++
+            });
+        }
+
+        // If no diagrams found, return the original markdown.
+        if (replacements.length === 0) return markdown;
+
+        // Process each diagram asynchronously
+        for (const rep of replacements) {
+            try {
+                let diagramHtml = '';
+                if (this.useImageMode) {
+                    // Render as image (PNG) and enforce display:block on the image to remove extra vertical whitespace.
+                    const imageDataUrl = await this.renderMermaidDiagram(rep.diagram, rep.index);
+                    diagramHtml = `<div class="diagram-container" style="overflow:hidden; margin:0; padding:0;">
+    <div class="diagram-title">Mermaid Diagram</div>
+    <img src="${imageDataUrl}" alt="Mermaid Diagram" style="display:block; max-width: 100%; height: auto;"
+         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+    <pre style="display: none; padding: 10px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; white-space: pre-wrap;">${this.escapeHtml(rep.diagram)}</pre>
+</div>`;
+                } else {
+                    // Render as SVG. Adjust the SVG string to include display:block style.
+                    let svgString = await this.renderMermaidDiagramSVG(rep.diagram, rep.index);
+                    // Adjust SVG to remove extra white space.
+                    svgString = await this.adjustSvgBoundingBox(svgString);
+                    // Add display:block if not already present.
+                    let modifiedSvgString = svgString;
+                    if (!/style\s*=/.test(svgString)) {
+                        modifiedSvgString = svgString.replace('<svg ', '<svg style="display:block;" ');
+                    } else {
+                        modifiedSvgString = svgString.replace(/style="([^"]*)"/, (match, content) =>
+                            `style="${content}; display:block;"`
+                        );
+                    }
+                    diagramHtml = `<div class="diagram-container" style="overflow:hidden; margin:0; padding:0;">
+    <div class="diagram-title">Mermaid Diagram</div>
+    ${modifiedSvgString}
+</div>`;
+                }
+                rep.replacement = diagramHtml;
+            } catch (error) {
+                console.error('Mermaid rendering error:', error);
+                rep.replacement = `<div class="diagram-container" style="overflow:hidden; margin:0; padding:0;">
+    <div class="diagram-title">Mermaid Diagram (Error)</div>
+    <p style="color: red; border: 1px solid red; padding: 10px; border-radius: 4px; background: #fee;">Error rendering diagram: ${error.message}</p>
+</div>`;
+            }
+        }
+
+        // Rebuild the markdown by stitching text segments with their replacements.
+        let newMarkdown = "";
+        let currentIndex = 0;
+        for (const rep of replacements) {
+            newMarkdown += markdown.substring(currentIndex, rep.start);
+            newMarkdown += rep.replacement;
+            currentIndex = rep.end;
+        }
+        newMarkdown += markdown.substring(currentIndex);
+        
+        return newMarkdown;
+    }
+
+    // Updated renderGraphVizDiagramSVG method: adjust the generated SVG
+    async renderGraphVizDiagramSVG(diagramCode) {
+        if (!this.graphviz) {
+            throw new Error('GraphViz library not available');
+        }
+        try {
+            let svg = this.graphviz.dot(diagramCode);
+            // Adjust the generated SVG (this should help with clipping issues)
+            svg = await this.adjustSvgBoundingBox(svg);
+            return svg;
+        } catch (error) {
+            throw new Error(`GraphViz rendering failed: ${error.message}`);
+        }
+    }
+
+    // Optionally, update svgToImageDataUrl to adjust SVG before conversion.
+    async svgToImageDataUrl(svgString) {
+        return new Promise((resolve, reject) => {
+            try {
+                // Adjust SVG first.
+                this.adjustSvgBoundingBox(svgString).then((adjustedSvg) => {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = adjustedSvg;
+                    const svgElement = tempDiv.querySelector('svg');
+                    
+                    if (!svgElement) {
+                        reject(new Error('Invalid SVG content'));
+                        return;
+                    }
+
+                    // Get dimensions from the adjusted viewBox
+                    let width = 800;
+                    let height = 600;
+                    
+                    const viewBox = svgElement.getAttribute('viewBox');
+                    if (viewBox) {
+                        const parts = viewBox.split(" ");
+                        if (parts.length === 4) {
+                            width = parseInt(parts[2]);
+                            height = parseInt(parts[3]);
+                        }
+                    } else {
                         if (svgElement.getAttribute('width')) {
                             width = parseInt(svgElement.getAttribute('width').replace('px', ''));
-                        } else if (svgElement.getAttribute('viewBox')) {
-                            const viewBox = svgElement.getAttribute('viewBox').split(' ');
-                            width = parseInt(viewBox[2]);
-                            height = parseInt(viewBox[3]);
                         }
-                        
                         if (svgElement.getAttribute('height')) {
                             height = parseInt(svgElement.getAttribute('height').replace('px', ''));
                         }
-
-                        // Create a canvas element with the correct dimensions
-                        const canvas = document.createElement('canvas');
-                        canvas.width = width;
-                        canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-
-                        // Fill canvas with white background
-                        ctx.fillStyle = 'white';
-                        ctx.fillRect(0, 0, width, height);
-
-                        // Use a data URL directly instead of a Blob URL
-                        const svgData = new XMLSerializer().serializeToString(svgElement);
-                        const svgBase64 = btoa(unescape(encodeURIComponent(svgData)));
-                        const dataUrl = `data:image/svg+xml;base64,${svgBase64}`;
-                        
-                        // Create Image object
-                        const img = new Image();
-                        
-                        // Set onload handler before setting src
-                        img.onload = function() {
-                            try {
-                                ctx.drawImage(img, 0, 0);
-                                const pngDataUrl = canvas.toDataURL('image/png');
-                                resolve(pngDataUrl);
-                            } catch (error) {
-                                console.error('Canvas drawing error:', error);
-                                // If canvas is tainted, just return the SVG as a data URL
-                                resolve(dataUrl);
-                            }
-                        };
-                        
-                        // Set onerror handler
-                        img.onerror = function(error) {
-                            console.error('Error loading SVG as image:', error);
-                            resolve(dataUrl); // Return the SVG data URL as fallback
-                        };
-                        
-                        // Set the image source to the data URL
-                        img.src = dataUrl;
-                    } catch (error) {
-                        console.error('SVG to PNG conversion error:', error);
-                        
-                        // Return a fallback placeholder image
-                        const fallbackCanvas = document.createElement('canvas');
-                        fallbackCanvas.width = 200;
-                        fallbackCanvas.height = 100;
-                        const ctx = fallbackCanvas.getContext('2d');
-                        ctx.fillStyle = '#f8f9fa';
-                        ctx.fillRect(0, 0, 200, 100);
-                        ctx.font = '14px Arial';
-                        ctx.fillStyle = '#dc3545';
-                        ctx.textAlign = 'center';
-                        ctx.fillText('Diagram rendering failed', 100, 50);
-                        resolve(fallbackCanvas.toDataURL('image/png'));
                     }
-                });
-            }
 
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+
+                    // Draw white background
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, width, height);
+
+                    const svgData = new XMLSerializer().serializeToString(svgElement);
+                    const svgBase64 = btoa(unescape(encodeURIComponent(svgData)));
+                    const dataUrl = `data:image/svg+xml;base64,${svgBase64}`;
+                    
+                    const img = new Image();
+                    
+                    img.onload = function() {
+                        try {
+                            ctx.drawImage(img, 0, 0);
+                            resolve(canvas.toDataURL('image/png'));
+                        } catch (error) {
+                            console.error('Canvas drawing error:', error);
+                            resolve(dataUrl);
+                        }
+                    };
+                    
+                    img.onerror = function(error) {
+                        console.error('Error loading SVG as image:', error);
+                        resolve(dataUrl);
+                    };
+                    
+                    img.src = dataUrl;
+                });
+            } catch (error) {
+                console.error('SVG to PNG conversion error:', error);
+                const fallbackCanvas = document.createElement('canvas');
+                fallbackCanvas.width = 200;
+                fallbackCanvas.height = 100;
+                const ctx = fallbackCanvas.getContext('2d');
+                ctx.fillStyle = '#f8f9fa';
+                ctx.fillRect(0, 0, 200, 100);
+                ctx.font = '14px Arial';
+                ctx.fillStyle = '#dc3545';
+                ctx.textAlign = 'center';
+                ctx.fillText('Diagram rendering failed', 100, 50);
+                resolve(fallbackCanvas.toDataURL('image/png'));
+            }
+        });
+    }
             showStatus(message, type = 'info') {
                 this.status.className = 'status ' + type;
                 this.status.innerHTML = message;
