@@ -890,6 +890,10 @@
                         <input type="radio" id="htmlMode" name="outputMode" value="html">
                         <label for="htmlMode">Pure HTML Mode (diagrams as SVG)</label>
                     </div>
+                    <div class="option-group">
+                        <input type="checkbox" id="addSpacing" name="addSpacing">
+                        <label for="addSpacing">Add extra spacing for better readability</label>
+                    </div>
                 </div>
                 <div id="preview"></div>
                 <div class="controls">
@@ -926,6 +930,7 @@
                 this.status = document.getElementById('status');
                 this.oneNoteModeRadio = document.getElementById('oneNoteMode');
                 this.htmlModeRadio = document.getElementById('htmlMode');
+                this.addSpacingCheckbox = document.getElementById('addSpacing'); // Add this line
             }
 
             initializeMarked() {
@@ -968,6 +973,13 @@
                 
                 this.htmlModeRadio.addEventListener('change', () => {
                     this.useImageMode = false;
+                    if (this.markdownInput.value.trim()) {
+                        this.convertMarkdown();
+                    }
+                });
+                
+                // Add spacing checkbox listener
+                this.addSpacingCheckbox.addEventListener('change', () => {
                     if (this.markdownInput.value.trim()) {
                         this.convertMarkdown();
                     }
@@ -1037,7 +1049,13 @@
                     const html = marked.parse(processedMarkdown);
                     
                     // Apply OneNote-specific formatting
-                    this.convertedHTML = this.formatForOneNote(html);
+                    let formattedHTML = this.formatForOneNote(html);
+                    
+                    // Apply extra spacing if enabled
+                    formattedHTML = this.addExtraSpacing(formattedHTML);
+                    
+                    // Store the final HTML
+                    this.convertedHTML = formattedHTML;
                     
                     // Display preview
                     this.preview.innerHTML = this.convertedHTML;
@@ -1048,7 +1066,8 @@
                     this.downloadBtn.disabled = false;
                     
                     const mode = this.useImageMode ? 'OneNote' : 'HTML';
-                    this.showStatus(`Conversion completed successfully in ${mode} mode!`, 'success');
+                    const spacingText = this.addSpacingCheckbox.checked ? ' with extra spacing' : '';
+                    this.showStatus(`Conversion completed successfully in ${mode} mode${spacingText}!`, 'success');
                     
                 } catch (error) {
                     console.error('Conversion error:', error);
@@ -1612,6 +1631,52 @@
             }
         });
     }
+
+    addExtraSpacing(html) {
+        if (!this.addSpacingCheckbox.checked) {
+            return html;
+        }
+
+        // Add spacing above headers (h1-h6)
+        html = html.replace(/(<h[1-6][^>]*>)/g, '<br><br>$1');
+        
+        // Add spacing below headers
+        html = html.replace(/(<\/h[1-6]>)/g, '$1<br>');
+        
+        // Add spacing below lists
+        html = html.replace(/(<\/ul>|<\/ol>)/g, '$1<br><br>');
+        
+        // Add spacing above lists (but not if they're immediately after a header)
+        html = html.replace(/(?<!<\/h[1-6]><br>)(<ul>|<ol>)/g, '<br>$1');
+        
+        // Add spacing above and below code blocks
+        html = html.replace(/(<pre[^>]*>)/g, '<br><br>$1');
+        html = html.replace(/(<\/pre>)/g, '$1<br><br>');
+        
+        // Add spacing above and below blockquotes
+        html = html.replace(/(<blockquote[^>]*>)/g, '<br><br>$1');
+        html = html.replace(/(<\/blockquote>)/g, '$1<br><br>');
+        
+        // Add spacing above and below tables
+        html = html.replace(/(<table[^>]*>)/g, '<br><br>$1');
+        html = html.replace(/(<\/table>)/g, '$1<br><br>');
+        
+        // Add spacing above and below diagram containers
+        html = html.replace(/(<div class="diagram-container"[^>]*>)/g, '<br><br>$1');
+        html = html.replace(/(<\/div>)(?=\s*(?:<(?!div|span)[^>]*>|\s|$))/g, '$1<br><br>');
+        
+        // Add spacing between paragraphs that don't already have it
+        html = html.replace(/(<\/p>)(\s*)(<p[^>]*>)/g, '$1<br>$2$3');
+        
+        // Clean up multiple consecutive <br> tags to maximum of 2
+        html = html.replace(/(<br>\s*){3,}/g, '<br><br>');
+        
+        // Remove leading <br> tags at the beginning
+        html = html.replace(/^(\s*<br>\s*)+/, '');
+        
+        return html;
+    }
+
             showStatus(message, type = 'info') {
                 this.status.className = 'status ' + type;
                 this.status.innerHTML = message;
